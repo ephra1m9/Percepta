@@ -1,125 +1,137 @@
-import os
-import threading
-
 import customtkinter as ctk
-from tkinter import filedialog
+import os
 
-from src.utils import get_image_files
-from src.scanner import find_duplicates
+from PIL import Image, ImageFont, ImageDraw
 
+from src.config import COLORS
+from src.ui.views.view_single import SingleFolderView
+from src.ui.views.view_multi import MultiFolderView
+from src.ui.views.view_originals import OriginalsView
+from src.ui.views.view_settings import SettingsView
 
-ctk.set_appearance_mode("Light")
+ctk.set_appearance_mode("Light") 
 ctk.set_default_color_theme("blue")
-
 
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("Percepta")
-        self.geometry("650x550")
-        self.minsize(600, 500)
+        self.title("Percepta — Поиск дубликатов")
+        self.geometry("950x700")
+        self.resizable(False, False) 
+        self.configure(fg_color=COLORS["bg_app"])
 
-        self.target_folder = ""
+        # Глобальное состояние (будет доступно во всех экранах)
+        self.app_state = {"tolerance": 5}
+        self.fonts = self._load_fonts()
 
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(3, weight=1)
+        self.grid_columnconfigure(0, minsize=240)
+        self.grid_columnconfigure(1, weight=1) 
+        self.grid_rowconfigure(0, weight=1)    
 
-        # --- Блок выбора папки ---
-        self.frame_top = ctk.CTkFrame(self, fg_color="transparent")
-        self.frame_top.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
-        
-        self.btn_select_folder = ctk.CTkButton(self.frame_top, text="Выбрать папку для сканирования", command=self.select_folder)
-        self.btn_select_folder.pack(side="left", padx=(0, 10))
+        self._build_sidebar()
 
-        self.lbl_folder_path = ctk.CTkLabel(self.frame_top, text="Папка не выбрана", text_color="gray")
-        self.lbl_folder_path.pack(side="left", fill="x", expand=True)
+        # Инициализируем все экраны (они создаются, но пока скрыты)
+        view_params = {"fg_color": COLORS["bg_surface"], "corner_radius": 15}
+        self.views = {
+            "single": SingleFolderView(self, self.app_state, self.fonts, **view_params),
+            "multi": MultiFolderView(self, self.app_state, self.fonts, **view_params),
+            "originals": OriginalsView(self, self.app_state, self.fonts, **view_params),
+            "settings": SettingsView(self, self.app_state, self.fonts, **view_params)
+        }
 
-        # --- Блок настройки чувствительности ---
-        self.frame_settings = ctk.CTkFrame(self, fg_color="transparent")
-        self.frame_settings.grid(row=1, column=0, padx=20, pady=10, sticky="ew")
+        # Запускаем с экрана поиска оригиналов по умолчанию
+        self.select_frame_by_name("single") 
 
-        self.lbl_tolerance = ctk.CTkLabel(self.frame_settings, text="Чувствительность: 5 (погрешность)")
-        self.lbl_tolerance.pack(anchor="w")
+    def _load_fonts(self):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        fonts_dir = os.path.join(current_dir, "..", "..", "assets", "fonts")
+        fonts = {}
 
-        self.slider_tolerance = ctk.CTkSlider(self.frame_settings, from_=0, to=15, number_of_steps=15, command=self.update_tolerance_label)
-        self.slider_tolerance.set(5) # Значение по умолчанию
-        self.slider_tolerance.pack(fill="x", pady=(5, 0))
-
-        # --- Кнопка старта ---
-        self.btn_start = ctk.CTkButton(self, text="Начать поиск", command=self.start_scan_thread, fg_color="#2FA572", hover_color="#108955")
-        self.btn_start.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
-
-        # --- Текстовое поле для результатов ---
-        self.textbox_results = ctk.CTkTextbox(self, state="disabled")
-        self.textbox_results.grid(row=3, column=0, padx=20, pady=(10, 20), sticky="nsew")
-
-    def select_folder(self):
-        folder = filedialog.askdirectory(title="Выберите папку с изображениями")
-        if folder:
-            self.target_folder = folder
-            self.lbl_folder_path.configure(text=self.target_folder)
-
-    def update_tolerance_label(self, value):
-        self.lbl_tolerance.configure(text=f"Чувствительность: {int(value)} (погрешность)")
-
-    def log_message(self, message):
-        """Выводит сообщение в текстовое поле"""
-        self.textbox_results.configure(state="normal")
-        self.textbox_results.insert("end", message + "\n")
-        self.textbox_results.see("end") # Автоскролл вниз
-        self.textbox_results.configure(state="disabled")
-
-    def start_scan_thread(self):
-        """Запускает сканирование в отдельном потоке, чтобы не заморозить интерфейс"""
-        if not self.target_folder:
-            self.log_message("⚠️ Ошибка: Сначала выберите папку!")
-            return
-
-        self.btn_start.configure(state="disabled", text="Идет сканирование...")
-        self.textbox_results.configure(state="normal")
-        self.textbox_results.delete("1.0", "end") # Очищаем старые результаты
-        self.textbox_results.configure(state="disabled")
-        
-        self.log_message(f"Начинаем сканирование папки: {self.target_folder}")
-        tolerance = int(self.slider_tolerance.get())
-
-        # Запускаем функцию run_scan в фоне
-        thread = threading.Thread(target=self.run_scan, args=(self.target_folder, tolerance))
-        thread.start()
-
-    def run_scan(self, folder, tolerance):
-        """Сама логика сканирования (работает в фоне)"""
         try:
-            # 1. Собираем файлы
-            self.log_message("Сбор файлов...")
-            files = get_image_files(folder)
-            self.log_message(f"Найдено изображений: {len(files)}")
-
-            if not files:
-                self.log_message("Поиск завершен. Картинки не найдены.")
-                return
-
-            # 2. Ищем дубликаты
-            self.log_message("Сравнение хешей (это может занять время)...")
-            duplicates = find_duplicates(files, tolerance=tolerance)
-
-            # 3. Выводим результат
-            if not duplicates:
-                self.log_message("✅ Дубликаты не найдены. Все изображения уникальны.")
-            else:
-                self.log_message(f"🚨 Найдено {len(duplicates)} групп дубликатов:\n")
-                for index, group in enumerate(duplicates, 1):
-                    self.log_message(f"--- Группа {index} ---")
-                    for path in group:
-                        # Выводим только имя файла и имя родительской папки, чтобы не загромождать экран длинными путями
-                        short_path = os.path.join(os.path.basename(os.path.dirname(path)), os.path.basename(path))
-                        self.log_message(f" • {short_path}")
-                    self.log_message("") # Пустая строка для отступа
-                    
-        except Exception as e:
-            self.log_message(f"❌ Произошла ошибка: {e}")
+            ctk.FontManager.load_font(os.path.join(fonts_dir, "Rubik-Light.ttf"))
+            ctk.FontManager.load_font(os.path.join(fonts_dir, "Rubik-Regular.ttf"))
+            ctk.FontManager.load_font(os.path.join(fonts_dir, "Rubik-Bold.ttf"))
+            ctk.FontManager.load_font(os.path.join(fonts_dir, "Montserrat-Bold.ttf"))
             
-        finally:
-            # Возвращаем кнопку в исходное состояние
-            self.btn_start.configure(state="normal", text="Начать поиск")
+            fonts['main'] = ctk.CTkFont(family='Rubik', size=16)
+            fonts['second'] = ctk.CTkFont(family='Rubik Light', size=15)
+            fonts['title'] = ctk.CTkFont(family='Montserrat', size=26, weight='bold')
+            fonts['subtitle'] = ctk.CTkFont(family='Rubik', size=18, weight='bold')
+        except Exception:
+            fonts['main'] = fonts['second'] = fonts['title'] = fonts['subtitle'] = None
+
+        fonts['icon_path'] = os.path.join(fonts_dir, "bootstrap-icons.ttf")
+            
+        return fonts
+
+    def _build_sidebar(self):
+        self.sidebar_frame = ctk.CTkFrame(self, corner_radius=0, fg_color=COLORS["bg_surface"])
+        self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
+        self.sidebar_frame.grid_columnconfigure(0, weight=1) 
+        self.sidebar_frame.grid_rowconfigure(5, weight=1) 
+
+        ctk.CTkLabel(self.sidebar_frame, text="Percepta", font=self.fonts['title'], text_color=COLORS["primary"]).grid(row=0, column=0, pady=(40, 40))
+
+        # --- Генерация иконок ---
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Коды иконок Bootstrap (папка, папки, поиск, шестеренка)
+        icon_single = self.create_font_icon("\uF42A", self.fonts['icon_path'], size=16, color="#333333")
+        icon_multi = self.create_font_icon("\uF42B", self.fonts['icon_path'], size=16, color="#333333")
+        icon_originals = self.create_font_icon("\uF787", self.fonts['icon_path'], size=16, color="#333333")
+        icon_settings = self.create_font_icon("\uF3E5", self.fonts['icon_path'], size=16, color="#333333")
+
+        self.nav_buttons = {}
+        
+        btn_params = {
+            "font": self.fonts['main'], "height": 40, "fg_color": "transparent", 
+            "text_color": "gray20", "hover_color": COLORS["bg_app"], "anchor": "w"
+        }
+
+        # Добавили image= и по два пробела перед текстом для аккуратного отступа
+        self.nav_buttons["single"] = ctk.CTkButton(self.sidebar_frame, text="  Одна папка", image=icon_single, command=lambda: self.select_frame_by_name("single"), **btn_params)
+        self.nav_buttons["single"].grid(row=1, column=0, padx=20, pady=5, sticky="ew")
+
+        self.nav_buttons["multi"] = ctk.CTkButton(self.sidebar_frame, text="  Несколько папок", image=icon_multi, command=lambda: self.select_frame_by_name("multi"), **btn_params)
+        self.nav_buttons["multi"].grid(row=2, column=0, padx=20, pady=5, sticky="ew")
+
+        self.nav_buttons["originals"] = ctk.CTkButton(self.sidebar_frame, text="  Поиск оригиналов", image=icon_originals, command=lambda: self.select_frame_by_name("originals"), **btn_params)
+        self.nav_buttons["originals"].grid(row=3, column=0, padx=20, pady=5, sticky="ew")
+
+        # Настройки на 6 строке (под пружиной)
+        self.nav_buttons["settings"] = ctk.CTkButton(self.sidebar_frame, text="  Настройки", image=icon_settings, command=lambda: self.select_frame_by_name("settings"), **btn_params)
+        self.nav_buttons["settings"].grid(row=6, column=0, padx=20, pady=(5, 30), sticky="ew")
+
+
+    def create_font_icon(self, char_code, font_path, size=24, color="gray20"):
+        """Рисует векторную иконку на прозрачном фоне"""
+        image = Image.new("RGBA", (size, size), (255, 255, 255, 0))
+        draw = ImageDraw.Draw(image)
+        try:
+            font = ImageFont.truetype(font_path, size)
+            draw.text((size/2, size/2), char_code, font=font, fill=color, anchor="mm")
+        except Exception as e:
+            # Теперь мы увидим реальную причину в консоли
+            print(f"❌ Ошибка иконки: {e} | Путь: {font_path}") 
+            
+        return ctk.CTkImage(light_image=image, size=(size, size))
+
+
+    def select_frame_by_name(self, name):
+        # 1. Сбрасываем цвета всех кнопок
+        for btn in self.nav_buttons.values():
+            btn.configure(fg_color="transparent", text_color=COLORS["text_main"])
+
+        # 2. Скрываем все экраны
+        for view in self.views.values():
+            view.grid_forget()
+
+        # 3. Подсвечиваем нужную кнопку
+        if name == "originals":
+            self.nav_buttons[name].configure(fg_color="#EBF5FB", text_color="#2980B9")
+        else:
+            self.nav_buttons[name].configure(fg_color=COLORS["primary_light"], text_color=COLORS["primary"])
+
+        # 4. Показываем нужный экран
+        self.views[name].grid(row=0, column=1, sticky="nsew", padx=30, pady=30)

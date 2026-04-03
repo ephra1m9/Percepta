@@ -1,0 +1,1 @@
+VALID_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.bmp'}

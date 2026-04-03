@@ -20,20 +20,25 @@ class SingleFolderView(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(3, weight=1)
 
-        ctk.CTkLabel(self, text="Поиск дубликатов в одной папке", font=self.fonts['title']).grid(row=0, column=0, sticky="w", padx=30, pady=(30, 20))
+        ctk.CTkLabel(self, text="Поиск дубликатов", font=self.fonts['title']).grid(row=0, column=0, sticky="w", padx=30, pady=(30, 20))
+
+        desc_frame = ctk.CTkFrame(self, fg_color=COLORS["bg_input"], corner_radius=8)
+        desc_frame.grid(row=1, column=0, padx=30, pady=(0, 20), sticky="ew")
+        description = ctk.CTkLabel(desc_frame, text="Поиск дубликатов в одной папке.", text_color=COLORS["text_main"], font=self.fonts['second'], anchor="w")
+        description.pack(fill="x", padx=20, pady=20)
 
         frame_folder = ctk.CTkFrame(self, fg_color="transparent")
-        frame_folder.grid(row=1, column=0, sticky="ew", padx=30, pady=(0, 20))
+        frame_folder.grid(row=2, column=0, sticky="ew", padx=30, pady=(0, 20))
         
         ctk.CTkButton(frame_folder, text="Выбрать папку", font=self.fonts['main'], height=40, command=self.select_folder).pack(side="left")
         self.lbl_folder = ctk.CTkLabel(frame_folder, text="Папка не выбрана", text_color="gray", font=self.fonts['second'])
         self.lbl_folder.pack(side="left", padx=(15, 0), fill="x", expand=True)
 
         self.btn_start = ctk.CTkButton(self, text="Начать поиск", font=self.fonts['main'], height=45, fg_color="#2FA572", hover_color="#108955", command=self.start_scan)
-        self.btn_start.grid(row=2, column=0, sticky="ew", padx=30, pady=(0, 20))
+        self.btn_start.grid(row=3, column=0, sticky="ew", padx=30, pady=(0, 20))
 
         self.textbox = ctk.CTkTextbox(self, state="disabled", font=self.fonts['second'], fg_color="#F9F9FB", border_width=1, border_color="#E5E5EA")
-        self.textbox.grid(row=3, column=0, sticky="nsew", padx=30, pady=(0, 30))
+        self.textbox.grid(row=4, column=0, sticky="nsew", padx=30, pady=(0, 30))
 
     def log(self, message):
         self.textbox.configure(state="normal")

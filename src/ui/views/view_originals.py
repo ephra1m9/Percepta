@@ -24,25 +24,30 @@ class OriginalsView(ctk.CTkFrame):
 
         icon_folder = self.master.create_font_icon("\uF3D1", self.fonts['icon_path'], size=18, color="#FFFFFF")
 
-        ctk.CTkLabel(self, text="Поиск оригиналов в лучшем качестве", font=self.fonts['title']).grid(row=0, column=0, sticky="w", padx=30, pady=(30, 20))
+        ctk.CTkLabel(self, text="Поиск оригиналов", font=self.fonts['title']).grid(row=0, column=0, sticky="w", padx=30, pady=(30, 20))
+
+        desc_frame = ctk.CTkFrame(self, fg_color=COLORS["bg_input"], corner_radius=8)
+        desc_frame.grid(row=1, column=0, padx=30, pady=(0, 20), sticky="ew")
+        description = ctk.CTkLabel(desc_frame, text="Поиск изображений в хорошем (исходном) качестве.", text_color=COLORS["text_main"], font=self.fonts['second'], anchor="w")
+        description.pack(fill="x", padx=20, pady=20)
 
         frame_low = ctk.CTkFrame(self, fg_color="transparent")
-        frame_low.grid(row=1, column=0, sticky="ew", padx=30, pady=(0, 10))
+        frame_low.grid(row=2, column=0, sticky="ew", padx=30, pady=(0, 10))
         ctk.CTkButton(frame_low, text="Папка на ретушь", image=icon_folder, font=self.fonts['main'], height=40, command=self.select_low).pack(side="left")
         self.lbl_low = ctk.CTkLabel(frame_low, text="Сжатые картинки от куратора", text_color="gray", font=self.fonts['second'])
         self.lbl_low.pack(side="left", padx=(15, 0), fill="x", expand=True) 
 
         frame_server = ctk.CTkFrame(self, fg_color="transparent")
-        frame_server.grid(row=2, column=0, sticky="ew", padx=30, pady=(0, 20))
+        frame_server.grid(row=3, column=0, sticky="ew", padx=30, pady=(0, 20))
         ctk.CTkButton(frame_server, text="Папка с исходниками", image=icon_folder, font=self.fonts['main'], height=40, command=self.select_server).pack(side="left")
         self.lbl_server = ctk.CTkLabel(frame_server, text="Папка с архивом/исходниками", text_color="gray", font=self.fonts['second'])
         self.lbl_server.pack(side="left", padx=(15, 0), fill="x", expand=True)
 
         self.btn_start = ctk.CTkButton(self, text="Найти и скопировать оригиналы", font=self.fonts['main'], height=45, fg_color="#2980B9", hover_color="#1F618D", command=self.start_scan)
-        self.btn_start.grid(row=3, column=0, sticky="ew", padx=30, pady=(0, 20))
+        self.btn_start.grid(row=4, column=0, sticky="ew", padx=30, pady=(0, 20))
 
         self.textbox = ctk.CTkTextbox(self, state="disabled", font=self.fonts['second'], fg_color="#F9F9FB", border_width=1, border_color="#E5E5EA")
-        self.textbox.grid(row=4, column=0, sticky="nsew", padx=30, pady=(0, 30))
+        self.textbox.grid(row=5, column=0, sticky="nsew", padx=30, pady=(0, 30))
 
     def log(self, message):
         self.textbox.configure(state="normal")

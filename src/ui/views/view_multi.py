@@ -22,8 +22,10 @@ class MultiFolderView(ctk.CTkFrame):
 
         ctk.CTkLabel(self, text="Сравнение изображений между папками", font=self.fonts['title']).grid(row=0, column=0, sticky="w", padx=30, pady=(30, 20))
 
-        description = ctk.CTkLabel(self, text="Сравнивает папки и ищет дубликаты.", text_color="#000000", fg_color="#2FA572", font=self.fonts['second'], corner_radius=8, height=30, anchor="w")
-        description.grid(row=1, column=0, padx=30, pady=(0, 20), sticky="ew")
+        desc_frame = ctk.CTkFrame(self, fg_color=COLORS["bg_input"], corner_radius=8)
+        desc_frame.grid(row=1, column=0, padx=30, pady=(0, 20), sticky="ew")
+        description = ctk.CTkLabel(desc_frame, text="Сравнивает папки и ищет дубликаты.", text_color=COLORS["text_main"], font=self.fonts['second'], anchor="w")
+        description.pack(fill="x", padx=20, pady=20)
 
         frame_btns = ctk.CTkFrame(self, fg_color="transparent")
         frame_btns.grid(row=2, column=0, sticky="ew", padx=30, pady=20)

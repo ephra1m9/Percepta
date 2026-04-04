@@ -3,7 +3,7 @@ import pathlib
 from .config import VALID_EXTENSIONS
 
 
-def get_image_files(directory_path):
+def get_image_files(directory_path, recursive=True):
     """Проходит по указанной папке (включая вложенные) и возвращает список путей ко всем картинкам."""
     image_paths = []
     path = pathlib.Path(directory_path)
@@ -11,8 +11,14 @@ def get_image_files(directory_path):
     if not path.exists() or not path.is_dir():
         return image_paths
     
-    for file_path in path.rglob('*'):
+    items = path.rglob('*') if recursive else path.iterdir()
+
+    for file_path in items:
         if file_path.is_file() and file_path.suffix.lower() in VALID_EXTENSIONS:
             image_paths.append(str(file_path.absolute()))
 
     return image_paths
+
+
+def update_status(label_widget, message):
+    label_widget.after(0, lambda: label_widget.configure(text=message))

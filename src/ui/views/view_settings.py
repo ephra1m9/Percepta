@@ -13,7 +13,7 @@ class SettingsView(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(2, weight=1)
 
-        ctk.CTkLabel(self, text="Настройки сканирования", font=self.fonts['title']).grid(row=0, column=0, sticky="w", padx=30, pady=(30, 30))
+        ctk.CTkLabel(self, text="Настройки программы", font=self.fonts['title']).grid(row=0, column=0, sticky="w", padx=30, pady=(30, 30))
 
         card = ctk.CTkFrame(self, fg_color="#F9F9FB", corner_radius=10, border_width=1, border_color="#E5E5EA")
         card.grid(row=1, column=0, sticky="ew", padx=30, pady=(0, 20))

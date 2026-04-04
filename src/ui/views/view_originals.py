@@ -29,7 +29,7 @@ class OriginalsView(ctk.CTkFrame):
         desc_frame = ctk.CTkFrame(self, fg_color=COLORS["bg_input"], corner_radius=8)
         desc_frame.grid(row=1, column=0, padx=30, pady=(0, 20), sticky="ew")
         description = ctk.CTkLabel(desc_frame, text="Поиск изображений в хорошем (исходном) качестве.", text_color=COLORS["text_main"], font=self.fonts['second'], anchor="w")
-        description.pack(fill="x", padx=20, pady=20)
+        description.pack(fill="x", padx=14, pady=14)
 
         frame_low = ctk.CTkFrame(self, fg_color="transparent")
         frame_low.grid(row=2, column=0, sticky="ew", padx=30, pady=(0, 10))

@@ -116,6 +116,40 @@ class App(ctk.CTk):
             print(f"❌ Ошибка иконки: {e} | Путь: {font_path}") 
             
         return ctk.CTkImage(light_image=image, size=(size, size))
+    
+
+    def show_error(self, message):
+        """Создает и показывает модальное окно с ошибкой"""
+        modal = ctk.CTkToplevel(self)
+        modal.title("Ошибка")
+
+        modal_width = 400
+        modal_height = 200
+
+        self.update_idletasks()
+
+        main_x = self.winfo_x()
+        main_y = self.winfo_y()
+        main_width = self.winfo_width()
+        main_height = self.winfo_height()
+
+        pos_x = main_x + (main_width // 2) - (modal_width // 2)
+        pos_y = main_y + (main_height // 2) - (modal_height // 2)
+
+        modal.geometry(f"{modal_width}x{modal_height}+{pos_x}+{pos_y}")
+        modal.resizable(False, False)
+
+        modal.transient(self)
+        modal.grab_set()
+
+        modal.grid_columnconfigure(0, weight=1)
+        modal.grid_rowconfigure(0, weight=1)
+
+        lbl = ctk.CTkLabel(modal, text=message, font=self.fonts['main'], text_color=COLORS["text_second"], wraplength=350)
+        lbl.grid(row=0, column=0, padx=20, pady=(30, 10))
+
+        btn = ctk.CTkButton(modal, text="Закрыть", fg_color=COLORS["error"], hover_color=COLORS["error"], corner_radius=10, command=modal.destroy)
+        btn.grid(row=1, column=0, pady=(0, 30))
 
 
     def select_frame_by_name(self, name):
@@ -128,10 +162,7 @@ class App(ctk.CTk):
             view.grid_forget()
 
         # 3. Подсвечиваем нужную кнопку
-        if name == "originals":
-            self.nav_buttons[name].configure(fg_color="#EBF5FB", text_color="#2980B9")
-        else:
-            self.nav_buttons[name].configure(fg_color=COLORS["primary_light"], text_color=COLORS["primary"])
+        self.nav_buttons[name].configure(fg_color=COLORS["primary_light"], text_color=COLORS["primary"])
 
         # 4. Показываем нужный экран
         self.views[name].grid(row=0, column=1, sticky="nsew", padx=30, pady=30)

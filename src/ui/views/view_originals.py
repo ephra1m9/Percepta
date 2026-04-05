@@ -30,7 +30,7 @@ def create_originals_view(parent, app_state, show_error_callback):
     icon_folder = parent.create_font_icon("\uF3D1", parent.icon_path, size=16, color=ui_component.COLORS["text_main"])
     icon_search = parent.create_font_icon("\uF52A", parent.icon_path, size=16, color=ui_component.COLORS["text_light"])
     icon_copy = parent.create_font_icon("\uF3D4", parent.icon_path, size=16, color=ui_component.COLORS["text_main"])
-    icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=16, color=ui_component.COLORS["text_main"])
+    icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=16, color=ui_component.COLORS["error"])
 
     # 0. Заголовок
     ui_component.title(content, "Поиск оригиналов")
@@ -75,7 +75,7 @@ def create_originals_view(parent, app_state, show_error_callback):
 
     btn_copy = ctk.CTkButton(btn_box, image=icon_copy, text="Скопировать найденное", font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY)
     btn_copy.pack(side="left", padx=5)
-    btn_cancel = ctk.CTkButton(btn_box, image=icon_cancel, text="Отмена", font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY)
+    btn_cancel = ctk.CTkButton(btn_box, image=icon_cancel, text="Отмена", font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY_DANGER)
     btn_cancel.pack(side="left", padx=5)
 
 

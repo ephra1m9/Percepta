@@ -67,11 +67,23 @@ BUTTON_SECONDARY_DANGER = {
 
 
 def title(view, text: str):
+    """Основной заголовок"""
     return ctk.CTkLabel(view, text=text, font=FONTS['title']).grid(row=0, column=0, sticky="w", pady=(0, 20))
 
 
 def description(view, text: str):
+    """Описание для функции программы"""
     desc_frame = ctk.CTkFrame(view, fg_color=COLORS["bg_input"], corner_radius=8)
     desc_frame.grid(row=1, column=0, pady=(0, 30), sticky="ew")
     description = ctk.CTkLabel(desc_frame, text=text, text_color=COLORS["text_main"], font=FONTS['second'], anchor="w")
     description.pack(fill="x", padx=14, pady=14)
+
+
+def hr_grid(view, row, pady=20):
+    """Горизонтальная линия (hr) в grid."""
+    ctk.CTkFrame(view, height=2, fg_color=COLORS["border"]).grid(row=row, column=0, sticky="ew", pady=pady)
+
+
+def hr_pack(view, pady=20):
+    """Горизонтальная линия (hr) в pack."""
+    ctk.CTkFrame(view, height=2, fg_color=COLORS["border"]).pack(fill="x", pady=pady)

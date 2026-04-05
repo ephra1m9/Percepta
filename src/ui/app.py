@@ -3,8 +3,8 @@ import os
 
 from PIL import Image, ImageFont, ImageDraw
 
-# ДОБАВИЛИ ИМПОРТ FONTS
-from src.ui.ui_components import COLORS, FONTS
+from src.config import VERSION
+import src.ui.ui_components as ui_component
 from src.ui.views.view_single import create_single_folder_view
 from src.ui.views.view_multi import create_multi_folder_view
 from src.ui.views.view_originals import create_originals_view
@@ -63,18 +63,19 @@ def show_error_modal(root, message):
     modal.grid_rowconfigure(0, weight=1)
 
     # Используем FONTS['main']
-    lbl = ctk.CTkLabel(modal, text=message, font=FONTS['main'], text_color=COLORS.get("text_second", "gray"), wraplength=350)
+    lbl = ctk.CTkLabel(modal, text=message, font=ui_component.FONTS['main'], text_color=ui_component.COLORS.get("text_second", "gray"), wraplength=350)
     lbl.grid(row=0, column=0, padx=20, pady=(30, 10))
 
-    btn = ctk.CTkButton(modal, text="Закрыть", fg_color=COLORS.get("error", "#E74C3C"), hover_color=COLORS.get("error", "#E74C3C"), corner_radius=10, command=modal.destroy)
+    btn = ctk.CTkButton(modal, text="Закрыть", fg_color=ui_component.COLORS.get("error", "#E74C3C"), hover_color=ui_component.COLORS.get("error", "#E74C3C"), corner_radius=10, command=modal.destroy)
     btn.grid(row=1, column=0, pady=(0, 30))
 
 def main():
     root = ctk.CTk()
     root.title("Percepta — Поиск дубликатов")
-    root.geometry("970x800")
-    root.resizable(False, False) 
-    root.configure(fg_color=COLORS["bg_app"])
+    root.geometry("900x700")
+    root.minsize(800, 500)
+    # root.resizable(False, False) 
+    root.configure(fg_color=ui_component.COLORS["bg_app"])
 
     root.create_font_icon = create_font_icon
 
@@ -87,13 +88,13 @@ def main():
     root.grid_rowconfigure(0, weight=1)    
 
     # --- SIDEBAR ---
-    sidebar_frame = ctk.CTkFrame(root, corner_radius=0, fg_color=COLORS["bg_surface"])
+    sidebar_frame = ctk.CTkFrame(root, corner_radius=0, fg_color=ui_component.COLORS["bg_surface"])
     sidebar_frame.grid(row=0, column=0, sticky="nsew")
     sidebar_frame.grid_columnconfigure(0, weight=1) 
-    sidebar_frame.grid_rowconfigure(5, weight=1) 
+    sidebar_frame.grid_rowconfigure(6, weight=1) 
 
     # Используем FONTS['title']
-    ctk.CTkLabel(sidebar_frame, text="Percepta", font=FONTS['title'], text_color=COLORS["primary"]).grid(row=0, column=0, pady=(40, 40))
+    ctk.CTkLabel(sidebar_frame, text="Percepta", font=ui_component.FONTS['title'], text_color=ui_component.COLORS["primary"]).grid(row=0, column=0, pady=(40, 40))
 
     icon_single = create_font_icon("\uF42A", icon_path, size=16, color="#333333")
     icon_multi = create_font_icon("\uF42B", icon_path, size=16, color="#333333")
@@ -102,8 +103,8 @@ def main():
 
     nav_buttons = {}
     btn_params = {
-        "font": FONTS['main'], "height": 40, "fg_color": "transparent",  # Используем FONTS['main']
-        "text_color": "gray20", "hover_color": COLORS["bg_app"], "anchor": "w"
+        "font": ui_component.FONTS['main'], "height": 40, "fg_color": "transparent",  # Используем FONTS['main']
+        "text_color": "gray20", "hover_color": ui_component.COLORS["bg_app"], "anchor": "w"
     }
 
     nav_buttons["single"] = ctk.CTkButton(sidebar_frame, text="  Одна папка", image=icon_single, **btn_params)
@@ -116,7 +117,11 @@ def main():
     nav_buttons["originals"].grid(row=3, column=0, padx=20, pady=5, sticky="ew")
 
     nav_buttons["settings"] = ctk.CTkButton(sidebar_frame, text="  Настройки", image=icon_settings, **btn_params)
-    nav_buttons["settings"].grid(row=6, column=0, padx=20, pady=(5, 30), sticky="ew")
+    nav_buttons["settings"].grid(row=7, column=0, padx=20, sticky="ew")
+
+    ui_component.hr_grid(sidebar_frame, row=8, pady=20)
+
+    ctk.CTkLabel(sidebar_frame, text=f"v. {VERSION}", font=ui_component.FONTS['second'], text_color=ui_component.COLORS['text_muted']).grid(row=9, column=0, padx=20, pady=(0, 30))
 
     def error_callback(msg):
         show_error_modal(root, msg) # Убрали fonts из вызова
@@ -130,15 +135,15 @@ def main():
     }
 
     for view in views.values():
-        view.configure(fg_color=COLORS["bg_surface"], corner_radius=15)
+        view.configure(fg_color=ui_component.COLORS["bg_surface"], corner_radius=15)
 
     def select_frame_by_name(name):
         for btn in nav_buttons.values():
-            btn.configure(fg_color="transparent", text_color=COLORS["text_main"])
+            btn.configure(fg_color="transparent", text_color=ui_component.COLORS["text_main"])
         for view in views.values():
             view.grid_forget()
 
-        nav_buttons[name].configure(fg_color=COLORS.get("primary_light", "lightblue"), text_color=COLORS["primary"])
+        nav_buttons[name].configure(fg_color=ui_component.COLORS.get("primary_light", "lightblue"), text_color=ui_component.COLORS["primary"])
         views[name].grid(row=0, column=1, sticky="nsew", padx=30, pady=30)
 
     nav_buttons["single"].configure(command=lambda: select_frame_by_name("single"))

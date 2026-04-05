@@ -4,30 +4,24 @@ import shutil
 import customtkinter as ctk
 
 from tkinter import filedialog
+from PIL import Image
 
 import src.ui.ui_components as ui_component
 from src.utils import get_image_files, update_status
 from src.scanner import find_duplicates
 
-
 def create_single_folder_view(parent, app_state, show_error_callback):
-    """
-    Функция-сборщик экрана "Одна папка".
-    Возвращает готовый виджет CTkFrame.
-    """
     
     # --- 1. ГЛАВНЫЙ ФОН ---
     view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
     
-    # --- 2. ФРЕЙМ-ОБЕРТКА (Здесь задаются глобальные отступы!) ---
+    # --- 2. ФРЕЙМ-ОБЕРТКА ---
     content = ctk.CTkFrame(view, fg_color="transparent")
-    content.pack(fill="both", expand=True, padx=30, pady=30)
+    content.pack(fill="both", expand=True, padx=40, pady=40)
     
-    # Настраиваем сетку уже для обертки
     content.grid_columnconfigure(0, weight=1)
     content.grid_rowconfigure(4, weight=1) 
 
-    # Локальное хранилище
     state = {
         "target_folder": "",
         "pending_files": []
@@ -38,34 +32,40 @@ def create_single_folder_view(parent, app_state, show_error_callback):
     icon_search = parent.create_font_icon("\uF52A", parent.icon_path, size=16, color=ui_component.COLORS["text_light"])
     icon_move = parent.create_font_icon("\uF3D4", parent.icon_path, size=16, color=ui_component.COLORS["text_main"])
     icon_delete = parent.create_font_icon("\uF5DD", parent.icon_path, size=16, color=ui_component.COLORS["text_main"])
-    icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=16, color=ui_component.COLORS["text_main"])
+    icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=16, color=ui_component.COLORS["error"])
 
-    # 0. Заголовок (Привязываем к content!)
+    # 0. Заголовок
     ui_component.title(content, "Одна папка")
 
     # 1. Описание
     ui_component.description(content, "Поиск дубликатов в одной папке.")
 
     # 2. Выбор папки
-    frame_folder = ctk.CTkFrame(content, fg_color="transparent")
-    frame_folder.grid(row=2, column=0, sticky="ew", pady=(0, 20)) # Отступы по краям больше не нужны
+    frame_folder = ctk.CTkFrame(content, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border'], corner_radius=10)
+    frame_folder.grid(row=2, column=0, sticky="ew", pady=(0, 20))
     
     btn_folder = ctk.CTkButton(frame_folder, text="Выбрать папку", font=ui_component.FONTS['main'], image=icon_folder, **ui_component.BUTTON_SECONDARY)
-    btn_folder.pack(side="left")
+    btn_folder.pack(side="left", padx=10, pady=10)
     
-    lbl_folder = ctk.CTkLabel(frame_folder, text="Не выбрано", text_color=ui_component.COLORS["text_muted"], font=ui_component.FONTS['second'])
-    lbl_folder.pack(side="left", padx=(15, 0), fill="x", expand=True)
+    lbl_folder = ctk.CTkLabel(frame_folder, text="Не выбрано", text_color=ui_component.COLORS["text_muted"], font=ui_component.FONTS['second'], anchor="e")
+    lbl_folder.pack(side="left", fill="x", expand=True, padx=10, pady=10)
 
     # 3. Кнопка поиска
     btn_start = ctk.CTkButton(content, image=icon_search, text="Начать поиск", font=ui_component.FONTS['main'], **ui_component.BUTTON_PRIMARY)
     btn_start.grid(row=3, column=0, sticky="ew", pady=(0, 20))
 
-    # 4. ЦЕНТРАЛЬНАЯ ЗОНА
+    # 4. ЦЕНТРАЛЬНАЯ ЗОНА (С фиксированной шапкой)
     message_frame = ctk.CTkFrame(content, fg_color="transparent")
     lbl_message = ctk.CTkLabel(message_frame, text="", justify="center")
     lbl_message.place(relx=0.5, rely=0.5, anchor="center") 
 
-    results_frame = ctk.CTkScrollableFrame(content, fg_color="transparent", border_width=1, border_color=ui_component.COLORS["border"], corner_radius=8)
+    results_container = ctk.CTkFrame(content, fg_color="transparent")
+    
+    lbl_results_header = ctk.CTkLabel(results_container, text="", font=ui_component.FONTS['main'], text_color=ui_component.COLORS["text_main"])
+    lbl_results_header.pack(anchor="w", padx=5, pady=(0, 10))
+
+    results_frame = ctk.CTkScrollableFrame(results_container, fg_color="transparent", border_width=1, border_color=ui_component.COLORS["border"], corner_radius=8)
+    results_frame.pack(fill="both", expand=True)
 
     action_frame = ctk.CTkFrame(content, fg_color="transparent")
     btn_box = ctk.CTkFrame(action_frame, fg_color="transparent")
@@ -73,25 +73,23 @@ def create_single_folder_view(parent, app_state, show_error_callback):
 
     btn_move = ctk.CTkButton(btn_box, image=icon_move, text="В отдельную папку", font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY)
     btn_move.pack(side="left", padx=5)
-    
     btn_delete = ctk.CTkButton(btn_box, image=icon_delete, text="Удалить дубликаты", font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY)
     btn_delete.pack(side="left", padx=5)
-    
-    btn_cancel = ctk.CTkButton(btn_box, image=icon_cancel, text="Отмена", font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY)
+    btn_cancel = ctk.CTkButton(btn_box, image=icon_cancel, text="Отмена", font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY_DANGER)
     btn_cancel.pack(side="left", padx=5)
 
 
     # --- 3. ЛОГИКА ---
     
     def show_message_state(text, color, font):
-        results_frame.grid_remove()
+        results_container.grid_remove()
         action_frame.grid_remove()
         lbl_message.configure(text=text, text_color=color, font=font)
         message_frame.grid(row=4, column=0, sticky="nsew", pady=(10, 10))
 
     def show_results_state():
         message_frame.grid_remove()
-        results_frame.grid(row=4, column=0, sticky="nsew", pady=(10, 10))
+        results_container.grid(row=4, column=0, sticky="nsew", pady=(10, 10))
         action_frame.grid(row=5, column=0, sticky="ew", pady=(0, 10))
 
     def select_folder():
@@ -99,7 +97,7 @@ def create_single_folder_view(parent, app_state, show_error_callback):
         if folder:
             state["target_folder"] = folder
             folder_name = os.path.basename(folder) or folder
-            lbl_folder.configure(text=folder_name)
+            lbl_folder.configure(text=folder_name, text_color=ui_component.COLORS["text_main"])
             show_message_state("Готово к сканированию", ui_component.COLORS["text_muted"], ui_component.FONTS['main'])
 
     def render_results(duplicates, total_files):
@@ -108,14 +106,9 @@ def create_single_folder_view(parent, app_state, show_error_callback):
 
         count = sum(len(group) - 1 for group in duplicates)
 
+        # Обновляем заголовок фиксированной шапки
         header_text = f"Проверено файлов: {total_files}   |   Найдено дубликатов: {count}"
-
-        ctk.CTkLabel(
-            results_frame, 
-            text=header_text, 
-            font=ui_component.FONTS['main'], 
-            text_color=ui_component.COLORS["text_main"]
-        ).pack(anchor="w", padx=5, pady=(5, 15))
+        lbl_results_header.configure(text=header_text)
 
         for group in duplicates:
             group_frame = ctk.CTkFrame(results_frame, fg_color=ui_component.COLORS["bg_input"], corner_radius=6)
@@ -164,18 +157,33 @@ def create_single_folder_view(parent, app_state, show_error_callback):
                 return
             
             total_files = len(files)
-            
             show_message_state("Сравнение хешей...", ui_component.COLORS["text_muted"], ui_component.FONTS['main'])
+            
             duplicates = find_duplicates(files, tolerance)
             
+            # --- Сортировка по качеству для одной папки ---
+            def get_image_quality(file_path):
+                try:
+                    size_bytes = os.path.getsize(file_path)
+                    with Image.open(file_path) as img:
+                        pixels = img.width * img.height
+                    return (pixels, size_bytes)
+                except Exception:
+                    return (0, 0)
+
             if not duplicates:
                 view.after(0, lambda: show_message_state(f"Проверено файлов: {total_files}\n\nДубликатов не найдено", ui_component.COLORS["text_main"], ui_component.FONTS['main']))
             else:
                 state["pending_files"] = []
-                for group in duplicates:
-                    state["pending_files"].extend(group[1:])
+                sorted_duplicates = []
                 
-                view.after(0, lambda: render_results(duplicates, total_files))
+                for group in duplicates:
+                    # Ставим файл с лучшим качеством на 0 место
+                    sorted_group = sorted(group, key=get_image_quality, reverse=True)
+                    sorted_duplicates.append(sorted_group)
+                    state["pending_files"].extend(sorted_group[1:])
+                
+                view.after(0, lambda: render_results(sorted_duplicates, total_files))
 
         except Exception as e:
             view.after(0, lambda: show_message_state("Произошла ошибка при сканировании", "#E74C3C", ui_component.FONTS['main']))
@@ -188,7 +196,6 @@ def create_single_folder_view(parent, app_state, show_error_callback):
         
         btn_start.configure(state="disabled")
         show_message_state("Анализ файлов...", ui_component.COLORS["text_muted"], ui_component.FONTS['main'])
-        
         threading.Thread(target=run_scan, args=(state["target_folder"], app_state["tolerance"])).start()
 
     # --- 4. ПРИВЯЗКА СОБЫТИЙ ---

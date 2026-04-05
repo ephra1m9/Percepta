@@ -1,6 +1,6 @@
 import os
-import shutil
 import threading
+import shutil
 import customtkinter as ctk
 
 from tkinter import filedialog
@@ -10,120 +10,204 @@ from src.utils import get_image_files
 from src.scanner import find_originals
 
 def create_originals_view(parent, app_state, show_error_callback):
-    view = ctk.CTkFrame(parent)
-    state = {"target_low": "", "target_server": ""}
+    
+    # --- 1. ГЛАВНЫЙ ФОН И ОБЕРТКА ---
+    view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
+    
+    content = ctk.CTkFrame(view, fg_color="transparent")
+    content.pack(fill="both", expand=True, padx=40, pady=40)
+    
+    content.grid_columnconfigure(0, weight=1)
+    content.grid_rowconfigure(5, weight=1)
 
-    view.grid_columnconfigure(0, weight=1)
-    view.grid_rowconfigure(4, weight=1)
+    state = {
+        "target_low": "",
+        "target_server": "",
+        "found_files": []
+    }
 
-    icon_folder = parent.create_font_icon("\uF3D1", parent.icon_path, size=18, color="#FFFFFF") if hasattr(parent, 'create_font_icon') else None
+    # Иконки
+    icon_folder = parent.create_font_icon("\uF3D1", parent.icon_path, size=16, color=ui_component.COLORS["text_main"])
+    icon_search = parent.create_font_icon("\uF52A", parent.icon_path, size=16, color=ui_component.COLORS["text_light"])
+    icon_copy = parent.create_font_icon("\uF3D4", parent.icon_path, size=16, color=ui_component.COLORS["text_main"])
+    icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=16, color=ui_component.COLORS["text_main"])
 
-    ctk.CTkLabel(view, text="Поиск оригиналов", font=ui_component.FONTS['title']).grid(row=0, column=0, sticky="w", padx=30, pady=(30, 20))
+    # 0. Заголовок
+    ui_component.title(content, "Поиск оригиналов")
+    ui_component.description(content, "Ищет исходники в хорошем качестве на сервере для выбранных превью.")
 
-    desc_frame = ctk.CTkFrame(view, fg_color=ui_component.COLORS["bg_input"], corner_radius=8)
-    desc_frame.grid(row=1, column=0, padx=30, pady=(0, 20), sticky="ew")
-    description = ctk.CTkLabel(desc_frame, text="Поиск изображений в хорошем (исходном) качестве.", text_color=ui_component.COLORS["text_main"], font=ui_component.FONTS['second'], anchor="w")
-    description.pack(fill="x", padx=14, pady=14)
+    # 1. Выбор папок
+    frame_low = ctk.CTkFrame(content, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border'], corner_radius=10)
+    frame_low.grid(row=2, column=0, sticky="ew", pady=(0, 10))
+    
+    btn_low = ctk.CTkButton(frame_low, text="Папка на ретушь", image=icon_folder, font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY)
+    btn_low.pack(side="left", padx=10, pady=10)
+    lbl_low = ctk.CTkLabel(frame_low, text="Сжатые картинки от куратора", text_color=ui_component.COLORS["text_muted"], font=ui_component.FONTS['second'], anchor="e")
+    lbl_low.pack(side="left", padx=10, pady=10, fill="x", expand=True) 
 
-    frame_low = ctk.CTkFrame(view, fg_color="transparent")
-    frame_low.grid(row=2, column=0, sticky="ew", padx=30, pady=(0, 10))
-    btn_low = ctk.CTkButton(frame_low, text="Папка на ретушь", image=icon_folder, font=ui_component.FONTS['main'], height=40)
-    btn_low.pack(side="left")
-    lbl_low = ctk.CTkLabel(frame_low, text="Сжатые картинки от куратора", text_color="gray", font=ui_component.FONTS['second'])
-    lbl_low.pack(side="left", padx=(15, 0), fill="x", expand=True) 
+    frame_server = ctk.CTkFrame(content, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border'], corner_radius=10)
+    frame_server.grid(row=3, column=0, sticky="ew", pady=(0, 20))
+    
+    btn_server = ctk.CTkButton(frame_server, text="Папка с исходниками", image=icon_folder, font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY)
+    btn_server.pack(side="left", padx=10, pady=10)
+    lbl_server = ctk.CTkLabel(frame_server, text="Архив / исходники сервера", text_color=ui_component.COLORS["text_muted"], font=ui_component.FONTS['second'], anchor="e")
+    lbl_server.pack(side="left", padx=10, pady=10, fill="x", expand=True)
 
-    frame_server = ctk.CTkFrame(view, fg_color="transparent")
-    frame_server.grid(row=3, column=0, sticky="ew", padx=30, pady=(0, 20))
-    btn_server = ctk.CTkButton(frame_server, text="Папка с исходниками", image=icon_folder, font=ui_component.FONTS['main'], height=40)
-    btn_server.pack(side="left")
-    lbl_server = ctk.CTkLabel(frame_server, text="Папка с архивом/исходниками", text_color="gray", font=ui_component.FONTS['second'])
-    lbl_server.pack(side="left", padx=(15, 0), fill="x", expand=True)
+    # 2. Кнопка поиска
+    btn_start = ctk.CTkButton(content, image=icon_search, text="Найти оригиналы", font=ui_component.FONTS['main'], **ui_component.BUTTON_PRIMARY)
+    btn_start.grid(row=4, column=0, sticky="ew", pady=(0, 20))
 
-    btn_start = ctk.CTkButton(view, text="Найти и скопировать оригиналы", font=ui_component.FONTS['main'], height=45, fg_color="#2980B9", hover_color="#1F618D")
-    btn_start.grid(row=4, column=0, sticky="ew", padx=30, pady=(0, 20))
+    # 3. ЦЕНТРАЛЬНАЯ ЗОНА
+    message_frame = ctk.CTkFrame(content, fg_color="transparent")
+    lbl_message = ctk.CTkLabel(message_frame, text="", justify="center")
+    lbl_message.place(relx=0.5, rely=0.5, anchor="center")
 
-    textbox = ctk.CTkTextbox(view, state="disabled", font=ui_component.FONTS['second'], fg_color="#F9F9FB", border_width=1, border_color="#E5E5EA")
-    textbox.grid(row=5, column=0, sticky="nsew", padx=30, pady=(0, 30))
+    results_container = ctk.CTkFrame(content, fg_color="transparent")
+    lbl_results_header = ctk.CTkLabel(results_container, text="", font=ui_component.FONTS['main'], text_color=ui_component.COLORS["text_main"])
+    lbl_results_header.pack(anchor="w", padx=5, pady=(0, 10))
+    
+    results_frame = ctk.CTkScrollableFrame(results_container, fg_color="transparent", border_width=1, border_color=ui_component.COLORS["border"], corner_radius=8)
+    results_frame.pack(fill="both", expand=True)
 
-    def log(message):
-        textbox.configure(state="normal")
-        textbox.insert("end", message + "\n")
-        textbox.see("end") 
-        textbox.configure(state="disabled")
+    action_frame = ctk.CTkFrame(content, fg_color="transparent")
+    btn_box = ctk.CTkFrame(action_frame, fg_color="transparent")
+    btn_box.pack(pady=(10, 0))
+
+    btn_copy = ctk.CTkButton(btn_box, image=icon_copy, text="Скопировать найденное", font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY)
+    btn_copy.pack(side="left", padx=5)
+    btn_cancel = ctk.CTkButton(btn_box, image=icon_cancel, text="Отмена", font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY)
+    btn_cancel.pack(side="left", padx=5)
+
+
+    # --- 4. ЛОГИКА ---
+    def show_message_state(text, color, font):
+        results_container.grid_remove()
+        action_frame.grid_remove()
+        lbl_message.configure(text=text, text_color=color, font=font)
+        message_frame.grid(row=5, column=0, sticky="nsew", pady=(10, 10))
+
+    def show_results_state():
+        message_frame.grid_remove()
+        results_container.grid(row=5, column=0, sticky="nsew", pady=(10, 10))
+        action_frame.grid(row=6, column=0, sticky="ew", pady=(0, 10))
 
     def select_low():
         folder = filedialog.askdirectory()
         if folder:
             state["target_low"] = folder
-            lbl_low.configure(text=folder)
+            lbl_low.configure(text=os.path.basename(folder) or folder, text_color=ui_component.COLORS['text_main'])
+            check_ready()
 
     def select_server():
         folder = filedialog.askdirectory()
         if folder:
             state["target_server"] = folder
-            lbl_server.configure(text=folder)
+            lbl_server.configure(text=os.path.basename(folder) or folder, text_color=ui_component.COLORS['text_main'])
+            check_ready()
+
+    def check_ready():
+        if state["target_low"] and state["target_server"]:
+            show_message_state("Готово к сканированию", ui_component.COLORS["text_muted"], ui_component.FONTS['main'])
+
+    def render_results(results, total_low):
+        for widget in results_frame.winfo_children():
+            widget.destroy()
+
+        found_count = len(results['found'])
+        not_found_count = len(results['not_found'])
+
+        # Шапка со статистикой
+        header_text = f"Проверено: {total_low}   |   Найдено оригиналов: {found_count}   |   Не найдено: {not_found_count}"
+        lbl_results_header.configure(text=header_text)
+
+        # Вывод НАЙДЕННЫХ оригиналов
+        if found_count > 0:
+            for low_path, high_path in results['found']:
+                group_frame = ctk.CTkFrame(results_frame, fg_color=ui_component.COLORS["bg_input"], corner_radius=6)
+                group_frame.pack(fill="x", pady=(0, 10), padx=5)
+
+                low_name = os.path.basename(low_path)
+                high_name = os.path.basename(high_path)
+                high_dir = os.path.basename(os.path.dirname(high_path))
+
+                ctk.CTkLabel(group_frame, text=f"Превью: {low_name}", font=ui_component.FONTS['main'], text_color=ui_component.COLORS["text_main"]).pack(anchor="w", padx=15, pady=(10, 5))
+                # Выделяем успешное нахождение зелёным цветом
+                ctk.CTkLabel(group_frame, text=f"↳ Оригинал: [{high_dir}] {high_name}", font=ui_component.FONTS['second'], text_color=ui_component.COLORS["success"]).pack(anchor="w", padx=15, pady=(0, 10))
+
+        # Вывод НЕ НАЙДЕННЫХ превью
+        if not_found_count > 0:
+            for nf_path in results['not_found']:
+                # Красный фон для ненайденных
+                group_frame = ctk.CTkFrame(results_frame, fg_color="#FDEDEC", corner_radius=6)
+                group_frame.pack(fill="x", pady=(0, 10), padx=5)
+                
+                nf_name = os.path.basename(nf_path)
+                ctk.CTkLabel(group_frame, text=f"❌ {nf_name} (Оригинал не найден)", font=ui_component.FONTS['main'], text_color=ui_component.COLORS["error"]).pack(anchor="w", padx=15, pady=(10, 10))
+
+        show_results_state()
+
+    def process_copy():
+        if not state["found_files"]:
+            return
+        
+        try:
+            save_dir = os.path.join(state["target_low"], "Originals_Found")
+            os.makedirs(save_dir, exist_ok=True)
+            
+            count = 0
+            for low_path, high_path in state["found_files"]:
+                low_name, _ = os.path.splitext(os.path.basename(low_path))
+                _, high_ext = os.path.splitext(high_path)
+                new_filename = f"{low_name}_HQ{high_ext}"
+                
+                shutil.copy2(high_path, os.path.join(save_dir, new_filename))
+                count += 1
+            
+            show_message_state(f"✅ Успешно скопировано файлов: {count}\n\nСохранено в папку Originals_Found", ui_component.COLORS["text_main"], ui_component.FONTS['main'])
+            state["found_files"] = []
+            
+        except Exception as e:
+            show_error_callback(f"Ошибка при копировании:\n{e}")
 
     def run_scan(low_folder, server_folder, tolerance):
-        btn_start.configure(state="disabled")
         try:
-            log("1. Сбор файлов с превью...")
             low_files = get_image_files(low_folder)
-            if not low_files: return log("❌ В папке с превью нет картинок.")
+            if not low_files:
+                return view.after(0, lambda: show_message_state("В папке с превью нет изображений", ui_component.COLORS["text_muted"], ui_component.FONTS['main']))
 
-            log("2. Сбор файлов с сервера...")
             server_files = get_image_files(server_folder)
-            if not server_files: return log("❌ В серверной папке нет картинок.")
+            if not server_files:
+                return view.after(0, lambda: show_message_state("В папке сервера нет изображений", ui_component.COLORS["text_muted"], ui_component.FONTS['main']))
 
-            log(f"\nИщем оригиналы для {len(low_files)} файлов...")
-            results = find_originals(low_files, server_files, tolerance)
-
-            found_count = len(results['found'])
-            not_found_count = len(results['not_found'])
+            total_low = len(low_files)
+            view.after(0, lambda: show_message_state("Поиск оригиналов...", ui_component.COLORS["text_muted"], ui_component.FONTS['main']))
             
-            log(f"\n✅ Найдено оригиналов: {found_count}")
-            log(f"❌ Не удалось найти: {not_found_count}\n")
-
-            if found_count > 0:
-                save_dir = os.path.join(low_folder, "Originals_Found")
-                os.makedirs(save_dir, exist_ok=True)
-                report_lines = ["--- Отчет о поиске ---", f"Найдено: {found_count}", f"Не найдено: {not_found_count}\n", "--- ДЕТАЛИЗАЦИЯ ---"]
-
-                for low_path, high_path in results['found']:
-                    low_name, _ = os.path.splitext(os.path.basename(low_path))
-                    _, high_ext = os.path.splitext(high_path)
-                    
-                    new_filename = f"{low_name}_HQ{high_ext}"
-                    shutil.copy2(high_path, os.path.join(save_dir, new_filename))
-                    
-                    report_lines.append(f"Превью: {os.path.basename(low_path)} --> Оригинал: {os.path.basename(high_path)}")
-                    log(f"Сохранено: {new_filename}")
-
-                if not_found_count > 0:
-                    report_lines.append("\n--- НЕ НАЙДЕНО ---")
-                    for nf_path in results['not_found']: report_lines.append(os.path.basename(nf_path))
-
-                with open(os.path.join(save_dir, "report.txt"), "w", encoding="utf-8") as f:
-                    f.write("\n".join(report_lines))
-
-                log(f"\n🎉 Готово! Сохранено в: {save_dir}")
-            else:
-                log("К сожалению, ни один оригинал не найден.")
+            results = find_originals(low_files, server_files, tolerance)
+            
+            state["found_files"] = results['found']
+            view.after(0, lambda: render_results(results, total_low))
 
         except Exception as e:
-            log(f"\n❌ Ошибка: {e}")
+            view.after(0, lambda: show_message_state("Произошла ошибка при сканировании", "#E74C3C", ui_component.FONTS['main']))
         finally:
             view.after(0, lambda: btn_start.configure(state="normal"))
 
     def start_scan():
         if not state["target_low"] or not state["target_server"]:
-            return log("⚠️ Выберите обе папки!")
-        textbox.configure(state="normal")
-        textbox.delete("1.0", "end")
-        textbox.configure(state="disabled")
+            return show_error_callback("Выберите обе папки!")
+        
+        btn_start.configure(state="disabled")
+        show_message_state("Сбор файлов...", ui_component.COLORS["text_muted"], ui_component.FONTS['main'])
+        
         threading.Thread(target=run_scan, args=(state["target_low"], state["target_server"], app_state["tolerance"])).start()
 
+    # --- 5. ПРИВЯЗКА СОБЫТИЙ ---
     btn_low.configure(command=select_low)
     btn_server.configure(command=select_server)
     btn_start.configure(command=start_scan)
+    btn_copy.configure(command=process_copy)
+    btn_cancel.configure(command=lambda: show_message_state("Действие отменено", ui_component.COLORS["text_muted"], ui_component.FONTS['main']))
+
+    show_message_state("Папки не выбраны", ui_component.COLORS["text_muted"], ui_component.FONTS['second'])
 
     return view

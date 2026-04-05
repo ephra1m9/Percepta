@@ -55,6 +55,17 @@ BUTTON_SECONDARY = {
 }
 
 
+BUTTON_SECONDARY_DANGER = {
+    "height": 30,
+    "corner_radius": 10,
+    "fg_color": "transparent",
+    "hover_color": '#FDEDEC',
+    "text_color": COLORS["error"],
+    "border_width": 1,
+    "border_color": COLORS["border_dark"]
+}
+
+
 def title(view, text: str):
     return ctk.CTkLabel(view, text=text, font=FONTS['title']).grid(row=0, column=0, sticky="w", pady=(0, 20))
 

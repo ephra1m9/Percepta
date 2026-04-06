@@ -14,7 +14,7 @@ def create_settings_view(parent, app_state, show_error_callback=None):
     card.grid(row=1, column=0, sticky="ew", padx=30, pady=(0, 20))
     card.grid_columnconfigure(0, weight=1)
 
-    lbl_tolerance = ctk.CTkLabel(card, text=f"Чувствительность алгоритма: {app_state['tolerance']}", font=ui_component.FONTS['subtitle'])
+    lbl_tolerance = ctk.CTkLabel(card, text=f"Чувствительность алгоритма: {app_state['tolerance']}", font=ui_component.FONTS['main'])
     lbl_tolerance.grid(row=0, column=0, sticky="w", padx=25, pady=(25, 5))
 
     desc = "Определяет допустимую разницу между картинками.\n0 — только точные копии, 5-10 — находит слегка сжатые или отретушированные фото."

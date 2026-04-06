@@ -28,11 +28,11 @@ def create_single_folder_view(parent, app_state, show_error_callback):
     }
 
     # Иконки
-    icon_folder = parent.create_font_icon("\uF3D1", parent.icon_path, size=16, color=ui_component.COLORS["text_main"])
+    icon_folder = parent.create_font_icon("\uF3D1", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
     icon_search = parent.create_font_icon("\uF52A", parent.icon_path, size=16, color=ui_component.COLORS["text_light"])
-    icon_move = parent.create_font_icon("\uF3D4", parent.icon_path, size=16, color=ui_component.COLORS["text_main"])
-    icon_delete = parent.create_font_icon("\uF5DD", parent.icon_path, size=16, color=ui_component.COLORS["text_main"])
-    icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=16, color=ui_component.COLORS["error"])
+    icon_move = parent.create_font_icon("\uF3D4", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
+    icon_delete = parent.create_font_icon("\uF5DD", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
+    icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=15, color=ui_component.COLORS["error"])
 
     # 0. Заголовок
     ui_component.title(content, "Одна папка")
@@ -44,7 +44,7 @@ def create_single_folder_view(parent, app_state, show_error_callback):
     frame_folder = ctk.CTkFrame(content, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border'], corner_radius=10)
     frame_folder.grid(row=2, column=0, sticky="ew", pady=(0, 20))
     
-    btn_folder = ctk.CTkButton(frame_folder, text="Выбрать папку", font=ui_component.FONTS['main'], image=icon_folder, **ui_component.BUTTON_SECONDARY)
+    btn_folder = ctk.CTkButton(frame_folder, text="Выбрать папку", font=ui_component.FONTS['second_btn'], image=icon_folder, **ui_component.BUTTON_SECONDARY)
     btn_folder.pack(side="left", padx=10, pady=10)
     
     lbl_folder = ctk.CTkLabel(frame_folder, text="Не выбрано", text_color=ui_component.COLORS["text_muted"], font=ui_component.FONTS['second'], anchor="e")
@@ -71,11 +71,11 @@ def create_single_folder_view(parent, app_state, show_error_callback):
     btn_box = ctk.CTkFrame(action_frame, fg_color="transparent")
     btn_box.pack(pady=(10, 20))
 
-    btn_move = ctk.CTkButton(btn_box, image=icon_move, text="В отдельную папку", font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY)
+    btn_move = ctk.CTkButton(btn_box, image=icon_move, text="В отдельную папку", font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
     btn_move.pack(side="left", padx=5)
-    btn_delete = ctk.CTkButton(btn_box, image=icon_delete, text="Удалить дубликаты", font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY)
+    btn_delete = ctk.CTkButton(btn_box, image=icon_delete, text="Удалить дубликаты", font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
     btn_delete.pack(side="left", padx=5)
-    btn_cancel = ctk.CTkButton(btn_box, image=icon_cancel, text="Отмена", font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY_DANGER)
+    btn_cancel = ctk.CTkButton(btn_box, image=icon_cancel, text="Отмена", font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY_DANGER)
     btn_cancel.pack(side="left", padx=5)
 
 

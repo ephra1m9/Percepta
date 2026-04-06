@@ -28,12 +28,12 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
     }
 
     # Иконки
-    icon_add = parent.create_font_icon("\uF4F9", parent.icon_path, size=16, color=ui_component.COLORS["text_main"]) 
-    icon_clear = parent.create_font_icon("\uF5DD", parent.icon_path, size=16, color="#E74C3C") 
+    icon_add = parent.create_font_icon("\uF4F9", parent.icon_path, size=15, color=ui_component.COLORS["text_main"]) 
+    icon_clear = parent.create_font_icon("\uF5DD", parent.icon_path, size=15, color="#E74C3C") 
     icon_search = parent.create_font_icon("\uF52A", parent.icon_path, size=16, color=ui_component.COLORS["text_light"])
-    icon_move = parent.create_font_icon("\uF3D4", parent.icon_path, size=16, color=ui_component.COLORS["text_main"])
-    icon_delete = parent.create_font_icon("\uF5DD", parent.icon_path, size=16, color=ui_component.COLORS["text_main"])
-    icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=16, color=ui_component.COLORS["text_main"])
+    icon_move = parent.create_font_icon("\uF3D4", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
+    icon_delete = parent.create_font_icon("\uF5DD", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
+    icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
 
     # 0. Заголовок
     ui_component.title(content, "Несколько папок")
@@ -45,11 +45,11 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
     frame_btns = ctk.CTkFrame(content, fg_color="transparent")
     frame_btns.grid(row=2, column=0, sticky="ew", pady=(0, 10))
     
-    btn_add = ctk.CTkButton(frame_btns, text="Добавить папку", font=ui_component.FONTS['main'], image=icon_add, **ui_component.BUTTON_SECONDARY)
+    btn_add = ctk.CTkButton(frame_btns, text="Добавить папку", font=ui_component.FONTS['second_btn'], image=icon_add, **ui_component.BUTTON_SECONDARY)
     btn_add.pack(side="left", padx=(0, 10))
     
     # Стилизуем кнопку очистки под опасное действие (красный контур)
-    btn_clear = ctk.CTkButton(frame_btns, text="Очистить список", font=ui_component.FONTS['main'], image=icon_clear, **ui_component.BUTTON_SECONDARY_DANGER)
+    btn_clear = ctk.CTkButton(frame_btns, text="Очистить список", font=ui_component.FONTS['second_btn'], image=icon_clear, **ui_component.BUTTON_SECONDARY_DANGER)
     btn_clear.pack(side="left")
 
     # 3. Список добавленных папок (Оставляем Textbox, так как он отлично подходит для списка)
@@ -83,13 +83,13 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
     btn_box = ctk.CTkFrame(action_frame, fg_color="transparent")
     btn_box.pack(pady=(10, 0))
 
-    btn_move = ctk.CTkButton(btn_box, image=icon_move, text="В 'duplicates'", font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY)
+    btn_move = ctk.CTkButton(btn_box, image=icon_move, text="В 'duplicates'", font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
     btn_move.pack(side="left", padx=5)
     
-    btn_delete = ctk.CTkButton(btn_box, image=icon_delete, text="Удалить дубликаты", font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY)
+    btn_delete = ctk.CTkButton(btn_box, image=icon_delete, text="Удалить дубликаты", font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
     btn_delete.pack(side="left", padx=5)
     
-    btn_cancel = ctk.CTkButton(btn_box, image=icon_cancel, text="Отмена", font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY)
+    btn_cancel = ctk.CTkButton(btn_box, image=icon_cancel, text="Отмена", font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
     btn_cancel.pack(side="left", padx=5)
 
 

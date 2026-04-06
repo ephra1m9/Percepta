@@ -27,10 +27,11 @@ def create_originals_view(parent, app_state, show_error_callback):
     }
 
     # Иконки
-    icon_folder = parent.create_font_icon("\uF3D1", parent.icon_path, size=16, color=ui_component.COLORS["text_main"])
+    icon_folder = parent.create_font_icon("\uF3D1", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
     icon_search = parent.create_font_icon("\uF52A", parent.icon_path, size=16, color=ui_component.COLORS["text_light"])
-    icon_copy = parent.create_font_icon("\uF3D4", parent.icon_path, size=16, color=ui_component.COLORS["text_main"])
-    icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=16, color=ui_component.COLORS["error"])
+    icon_copy = parent.create_font_icon("\uF721", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
+    icon_replace = parent.create_font_icon("\uF51D", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
+    icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=15, color=ui_component.COLORS["error"])
 
     # 0. Заголовок
     ui_component.title(content, "Поиск оригиналов")
@@ -40,7 +41,7 @@ def create_originals_view(parent, app_state, show_error_callback):
     frame_low = ctk.CTkFrame(content, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border'], corner_radius=10)
     frame_low.grid(row=2, column=0, sticky="ew", pady=(0, 10))
     
-    btn_low = ctk.CTkButton(frame_low, text="Папка на ретушь", image=icon_folder, font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY)
+    btn_low = ctk.CTkButton(frame_low, text="Папка на ретушь", image=icon_folder, font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
     btn_low.pack(side="left", padx=10, pady=10)
     lbl_low = ctk.CTkLabel(frame_low, text="Сжатые картинки от куратора", text_color=ui_component.COLORS["text_muted"], font=ui_component.FONTS['second'], anchor="e")
     lbl_low.pack(side="left", padx=10, pady=10, fill="x", expand=True) 
@@ -48,7 +49,7 @@ def create_originals_view(parent, app_state, show_error_callback):
     frame_server = ctk.CTkFrame(content, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border'], corner_radius=10)
     frame_server.grid(row=3, column=0, sticky="ew", pady=(0, 20))
     
-    btn_server = ctk.CTkButton(frame_server, text="Папка с исходниками", image=icon_folder, font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY)
+    btn_server = ctk.CTkButton(frame_server, text="Папка с исходниками", image=icon_folder, font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
     btn_server.pack(side="left", padx=10, pady=10)
     lbl_server = ctk.CTkLabel(frame_server, text="Архив / исходники сервера", text_color=ui_component.COLORS["text_muted"], font=ui_component.FONTS['second'], anchor="e")
     lbl_server.pack(side="left", padx=10, pady=10, fill="x", expand=True)
@@ -73,9 +74,11 @@ def create_originals_view(parent, app_state, show_error_callback):
     btn_box = ctk.CTkFrame(action_frame, fg_color="transparent")
     btn_box.pack(pady=(10, 0))
 
-    btn_copy = ctk.CTkButton(btn_box, image=icon_copy, text="Скопировать найденное", font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY)
+    btn_replace = ctk.CTkButton(btn_box, image=icon_replace, text="Заменить на оригиналы", font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
+    btn_replace.pack(side="left", padx=5)
+    btn_copy = ctk.CTkButton(btn_box, image=icon_copy, text="Собрать в папку", font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
     btn_copy.pack(side="left", padx=5)
-    btn_cancel = ctk.CTkButton(btn_box, image=icon_cancel, text="Отмена", font=ui_component.FONTS['main'], **ui_component.BUTTON_SECONDARY_DANGER)
+    btn_cancel = ctk.CTkButton(btn_box, image=icon_cancel, text="Отмена", font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY_DANGER)
     btn_cancel.pack(side="left", padx=5)
 
 
@@ -146,28 +149,74 @@ def create_originals_view(parent, app_state, show_error_callback):
 
         show_results_state()
 
-    def process_copy():
+    def process_replace():
         if not state["found_files"]:
             return
         
         try:
-            save_dir = os.path.join(state["target_low"], "Originals_Found")
-            os.makedirs(save_dir, exist_ok=True)
-            
             count = 0
             for low_path, high_path in state["found_files"]:
-                low_name, _ = os.path.splitext(os.path.basename(low_path))
-                _, high_ext = os.path.splitext(high_path)
-                new_filename = f"{low_name}_HQ{high_ext}"
+                # Получаем директорию и имя превью (без расширения)
+                low_dir = os.path.dirname(low_path)
+                low_name_no_ext, _ = os.path.splitext(os.path.basename(low_path))
                 
-                shutil.copy2(high_path, os.path.join(save_dir, new_filename))
+                # Получаем расширение оригинала
+                _, high_ext = os.path.splitext(high_path)
+                
+                # Формируем новый путь: папка от превью + имя от превью + расширение от оригинала
+                new_target_path = os.path.join(low_dir, low_name_no_ext + high_ext)
+                
+                # 1. Удаляем шакальное превью
+                if os.path.exists(low_path):
+                    os.remove(low_path)
+                    
+                # 2. Копируем оригинал на место превью с новым именем
+                shutil.copy2(high_path, new_target_path)
+                
                 count += 1
             
-            show_message_state(f"✅ Успешно скопировано файлов: {count}\n\nСохранено в папку Originals_Found", ui_component.COLORS["text_main"], ui_component.FONTS['main'])
+            show_message_state(f"✅ Успешно заменено файлов: {count}\n\nОригиналы подставлены на место превью.", ui_component.COLORS["text_main"], ui_component.FONTS['main'])
+            state["found_files"] = []
+            
+        except Exception as e:
+            show_error_callback(f"Ошибка при замене файлов:\n{e}")
+
+
+    def process_copy_report():
+        if not state["found_files"]:
+            return
+        
+        try:
+            # Создаем папку Found_Originals внутри папки с превью
+            save_dir = os.path.join(state["target_low"], "Found_Originals")
+            os.makedirs(save_dir, exist_ok=True)
+            
+            # Подготавливаем "шапку" для нашего отчета
+            report_lines = ["Отчет о найденных оригиналах\n", "="*50 + "\n\n"]
+            count = 0
+            
+            for low_path, high_path in state["found_files"]:
+                low_name = os.path.basename(low_path)
+                high_name = os.path.basename(high_path)
+                
+                # 1. Копируем оригинал в новую папку (сохраняя его родное имя)
+                shutil.copy2(high_path, os.path.join(save_dir, high_name))
+                
+                # 2. Добавляем строчку в отчет
+                report_lines.append(f"Изображение: {low_name}  --->  Оригинал: {high_name}\n")
+                count += 1
+            
+            # 3. Сохраняем текстовый файл с отчетом
+            report_path = os.path.join(save_dir, "_report.txt")
+            with open(report_path, "w", encoding="utf-8") as f:
+                f.writelines(report_lines)
+            
+            show_message_state(f"✅ Успешно скопировано файлов: {count}\n\nОригиналы и 'report.txt' сохранены в папку 'Found_Originals'.", ui_component.COLORS["text_main"], ui_component.FONTS['main'])
             state["found_files"] = []
             
         except Exception as e:
             show_error_callback(f"Ошибка при копировании:\n{e}")
+
 
     def run_scan(low_folder, server_folder, tolerance):
         try:
@@ -205,7 +254,8 @@ def create_originals_view(parent, app_state, show_error_callback):
     btn_low.configure(command=select_low)
     btn_server.configure(command=select_server)
     btn_start.configure(command=start_scan)
-    btn_copy.configure(command=process_copy)
+    btn_replace.configure(command=process_replace)
+    btn_copy.configure(command=process_copy_report)
     btn_cancel.configure(command=lambda: show_message_state("Действие отменено", ui_component.COLORS["text_muted"], ui_component.FONTS['main']))
 
     show_message_state("Папки не выбраны", ui_component.COLORS["text_muted"], ui_component.FONTS['second'])

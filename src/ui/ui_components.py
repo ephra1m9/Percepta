@@ -29,9 +29,9 @@ COLORS = {
 
 FONTS = {
     "title": ("Montserrat", 26, "bold"),
-    "subtitle": ("Rubik", 18, "bold"),
     "main": ("Rubik", 16),
     "second": ("Rubik Light", 15),
+    "second_btn": ("Rubik", 15)
 }
 
 

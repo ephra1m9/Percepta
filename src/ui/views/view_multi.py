@@ -14,11 +14,12 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
     view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
     
     content = ctk.CTkFrame(view, fg_color="transparent")
-    content.pack(fill="both", expand=True, padx=40, pady=40)
+    content.pack(fill="both", expand=True, padx=40, pady=20)
     
-    # Строка 0: Заголовок и описание, Строка 1: Динамическая зона
-    content.grid_columnconfigure(0, weight=1)
-    content.grid_rowconfigure(2, weight=1)
+    main_container = ctk.CTkFrame(content, fg_color="transparent")
+    main_container.pack(fill="both", expand=True)
+    main_container.grid_columnconfigure(0, weight=1)
+    main_container.grid_rowconfigure(0, weight=1)
 
     state = {
         "reference_folder": "", 
@@ -35,49 +36,38 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
     icon_delete = parent.create_font_icon("\uF5DD", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
     icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=15, color="#E74C3C")
 
-    # --- 1. ШАПКА ---
-    ui_component.title(content, "Поиск по эталону")
-    ui_component.description(
-        content, 
-        "Программа проверит добавленные папки и найдет в них те изображения, которые уже присутствуют в эталонной папке."
-    )
-
-    # --- 2. ДИНАМИЧЕСКАЯ ЗОНА ---
-    # Контейнер, который будет переключать экраны
-    main_container = ctk.CTkFrame(content, fg_color="transparent")
-    main_container.grid(row=2, column=0, sticky="nsew")
-    main_container.grid_columnconfigure(0, weight=1)
-    main_container.grid_rowconfigure(0, weight=1)
-
     # ================= ЭКРАН 1: НАСТРОЙКИ =================
     setup_frame = ctk.CTkFrame(main_container, fg_color="transparent")
     setup_frame.grid_columnconfigure(0, weight=1)
 
-    # Блок эталона
+    ui_component.title(setup_frame, "Поиск по эталону")
+    ui_component.description(
+        setup_frame, 
+        "Программа проверит добавленные папки и найдет в них те изображения, которые уже присутствуют в эталонной папке."
+    )
+
     frame_ref = ctk.CTkFrame(setup_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border'], corner_radius=10)
-    frame_ref.pack(fill="x", pady=(0, 20))
+    frame_ref.grid(row=2, column=0, sticky="ew", pady=(20, 10))
     btn_ref = ctk.CTkButton(frame_ref, text="Эталонная папка", image=icon_folder, font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
     btn_ref.pack(side="left", padx=10, pady=10)
     lbl_ref = ctk.CTkLabel(frame_ref, text="Папка с готовыми файлами (Архив)", text_color=ui_component.COLORS["text_muted"], font=ui_component.FONTS['second'], anchor="e")
     lbl_ref.pack(side="left", padx=10, pady=10, fill="x", expand=True) 
 
-    # Блок рабочих папок
     frame_btns = ctk.CTkFrame(setup_frame, fg_color="transparent")
-    frame_btns.pack(fill="x", pady=(0, 10))
+    frame_btns.grid(row=3, column=0, sticky="ew", pady=(0, 10))
     btn_add = ctk.CTkButton(frame_btns, text="Добавить рабочие папки", font=ui_component.FONTS['second_btn'], image=icon_add, **ui_component.BUTTON_SECONDARY)
     btn_add.pack(side="left", padx=(0, 10))
     btn_clear = ctk.CTkButton(frame_btns, text="Очистить список", font=ui_component.FONTS['second_btn'], image=icon_clear, **ui_component.BUTTON_SECONDARY_DANGER)
     btn_clear.pack(side="left")
 
-    listbox = ctk.CTkTextbox(setup_frame, height=120, state="disabled", font=ui_component.FONTS['second'], 
-                             fg_color=ui_component.COLORS["bg_input"], text_color=ui_component.COLORS["text_main"], border_width=0, corner_radius=8)
-    listbox.pack(fill="x", pady=(0, 20))
+    listbox = ctk.CTkTextbox(setup_frame, height=120, state="disabled", font=ui_component.FONTS['second'], fg_color=ui_component.COLORS["bg_input"], text_color=ui_component.COLORS["text_main"], border_width=0, corner_radius=8)
+    listbox.grid(row=4, column=0, sticky="ew", pady=(0, 20))
 
     btn_start = ctk.CTkButton(setup_frame, image=icon_search, text="Начать поиск", font=ui_component.FONTS['main'], **ui_component.BUTTON_PRIMARY)
-    btn_start.pack(fill="x")
+    btn_start.grid(row=5, column=0, sticky="ew")
 
     lbl_status = ctk.CTkLabel(setup_frame, text="Настройте папки для начала", font=ui_component.FONTS['second'], text_color=ui_component.COLORS["text_muted"])
-    lbl_status.pack(pady=10)
+    lbl_status.grid(row=6, column=0, pady=10)
 
 
     # ================= ЭКРАН 2: ЗАГРУЗКА И СООБЩЕНИЯ =================
@@ -88,40 +78,39 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
 
     # ================= ЭКРАН 3: РЕЗУЛЬТАТЫ И КАРТОЧКИ =================
     results_frame = ctk.CTkFrame(main_container, fg_color="transparent")
-    results_frame.grid_columnconfigure(0, weight=1)
-    results_frame.grid_rowconfigure(1, weight=1) # Растягиваем список результатов
 
-    # Навигация результатов
+    # Шапка
     res_top_bar = ctk.CTkFrame(results_frame, fg_color="transparent")
-    res_top_bar.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+    res_top_bar.pack(side="top", fill="x", pady=(0, 10))
     btn_back = ctk.CTkButton(res_top_bar, text="Отмена", image=icon_cancel, font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY_DANGER)
     btn_back.pack(side="left")
     lbl_results_header = ctk.CTkLabel(res_top_bar, text="", font=ui_component.FONTS['main'], text_color=ui_component.COLORS["text_main"])
     lbl_results_header.pack(side="right", padx=10)
 
-    # Список
-    results_scroll = ctk.CTkScrollableFrame(results_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS["border"], corner_radius=8)
-    results_scroll.grid(row=1, column=0, sticky="nsew", pady=(0, 15))
-
-    # КАРТОЧКИ ДЕЙСТВИЙ (В СТОЛБИК: Кнопка сверху, текст снизу)
+    # Карточки действий (прибиты ко дну)
     actions_grid = ctk.CTkFrame(results_frame, fg_color="transparent")
-    actions_grid.grid(row=2, column=0, sticky="ew", pady=(10, 0))
+    actions_grid.pack(side="bottom", fill="x", pady=(10, 0))
 
     btn_copy = ui_component.result_action_btn(
         actions_grid, 
         "Скопировать найденные", 
-        "Копирует найденные изображения из папок в эталонную папку", 
+        "Копирует найденные изображения из рабочих папок в эталонную папку", 
         icon_copy
     )
 
     btn_delete = ui_component.result_action_btn(
         actions_grid, 
         "Удалить", 
-        "Удаляет из эталонной папки те изображения, которые нашлись папках", 
+        "Удаляет из эталонной папки те изображения, которые нашлись в остальных папках", 
         icon_delete
     )
 
-    # --- ЛОГИКА ИНТЕРФЕЙСА (ПЕРЕКЛЮЧАТЕЛЬ ЭКРАНОВ) ---
+    # Список
+    results_scroll = ctk.CTkScrollableFrame(results_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS["border"], corner_radius=8)
+    results_scroll.pack(side="top", fill="both", expand=True, pady=(0, 5))
+
+
+    # --- ЛОГИКА ИНТЕРФЕЙСА ---
     def switch_view(view_name):
         setup_frame.grid_remove()
         message_frame.grid_remove()
@@ -138,8 +127,8 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
         lbl_message_big.configure(text=text)
         switch_view("message")
 
-    # Скрываем все экраны, кроме стартового
     switch_view("setup")
+
 
     # --- ЛОГИКА РАБОТЫ ---
     def set_reference_folder():
@@ -181,7 +170,7 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
             widget.destroy()
         
         count = sum(len(group) - 1 for group in duplicates)
-        lbl_results_header.configure(text=f"Найдено: {count} совпадений")
+        lbl_results_header.configure(text=f"Найдено совпадений: {count}")
 
         for group in duplicates:
             group_frame = ctk.CTkFrame(results_scroll, fg_color=ui_component.COLORS["bg_surface"], border_width=1, border_color=ui_component.COLORS["border"], corner_radius=6)
@@ -215,7 +204,7 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
                 show_message(f"✅ Удалено из эталона: {len(to_delete)}")
                 
             state["found_groups"] = [] 
-            view.after(2500, lambda: switch_view("setup")) # Возврат в меню через 2.5 секунды
+            view.after(2500, lambda: switch_view("setup")) 
                 
         except Exception as e:
             show_error_callback(f"Ошибка:\n{e}")

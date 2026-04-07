@@ -45,6 +45,15 @@ BUTTON_PRIMARY = {
 }
 
 
+BUTTON_PRIMARY_MIN = {
+    "height": 30,
+    "corner_radius": 10,
+    "fg_color": COLORS["primary_btn"],
+    "hover_color": COLORS["primary_btn_hover"],
+    "text_color": COLORS["text_light"]
+}
+
+
 BUTTON_SECONDARY = {
     "height": 30,
     "corner_radius": 10,

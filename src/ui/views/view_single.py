@@ -7,15 +7,14 @@ from tkinter import filedialog
 from PIL import Image
 
 import src.ui.ui_components as ui_component
-from src.utils import get_image_files, update_status
+from src.utils import get_image_files
 from src.scanner import find_duplicates
+
 
 def create_single_folder_view(parent, app_state, show_error_callback):
     
-    # --- 1. ГЛАВНЫЙ ФОН ---
     view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
     
-    # --- 2. ФРЕЙМ-ОБЕРТКА ---
     content = ctk.CTkFrame(view, fg_color="transparent")
     content.pack(fill="both", expand=True, padx=40, pady=40)
     
@@ -35,10 +34,10 @@ def create_single_folder_view(parent, app_state, show_error_callback):
     icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=15, color=ui_component.COLORS["error"])
 
     # 0. Заголовок
-    ui_component.title(content, "Одна папка")
+    ui_component.title(content, "Поиск дубликатов")
 
     # 1. Описание
-    ui_component.description(content, "Поиск дубликатов в одной папке.")
+    ui_component.description(content, "Ищет дубликаты изображений в одной папке.")
 
     # 2. Выбор папки
     frame_folder = ctk.CTkFrame(content, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border'], corner_radius=10)
@@ -79,8 +78,7 @@ def create_single_folder_view(parent, app_state, show_error_callback):
     btn_cancel.pack(side="left", padx=5)
 
 
-    # --- 3. ЛОГИКА ---
-    
+    # --- 3. ЛОГИКА ---    
     def show_message_state(text, color, font):
         results_container.grid_remove()
         action_frame.grid_remove()
@@ -178,7 +176,7 @@ def create_single_folder_view(parent, app_state, show_error_callback):
                 sorted_duplicates = []
                 
                 for group in duplicates:
-                    # Ставим файл с лучшим качеством на 0 место
+                    # Файл с лучшим качеством на 0 место
                     sorted_group = sorted(group, key=get_image_quality, reverse=True)
                     sorted_duplicates.append(sorted_group)
                     state["pending_files"].extend(sorted_group[1:])

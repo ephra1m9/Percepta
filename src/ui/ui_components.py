@@ -1,4 +1,5 @@
 import customtkinter as ctk
+import textwrap
 
 
 COLORS = {
@@ -66,6 +67,25 @@ BUTTON_SECONDARY_DANGER = {
 }
 
 
+class CTkAdaptiveLabel(ctk.CTkLabel):
+    """Умный ярлык для label"""
+    def __init__(self, *args, **kwargs):
+        self._raw_text = kwargs.get("text", "")
+        super().__init__(*args, **kwargs)
+        self._last_width = 0
+        self.bind("<Configure>", self._update_text)
+
+    def _update_text(self, event):
+        if abs(self._last_width - event.width) > 10:
+            self._last_width = event.width
+            
+            max_chars = max(10, int(event.width / 7.5))
+            
+            wrapped_text = textwrap.fill(self._raw_text, width=max_chars)
+            
+            self.configure(text=wrapped_text)
+
+
 def title(view, text: str):
     """Основной заголовок"""
     return ctk.CTkLabel(view, text=text, font=FONTS['title']).grid(row=0, column=0, sticky="w", pady=(0, 20))
@@ -75,8 +95,16 @@ def description(view, text: str):
     """Описание для функции программы"""
     desc_frame = ctk.CTkFrame(view, fg_color=COLORS["bg_input"], corner_radius=8)
     desc_frame.grid(row=1, column=0, pady=(0, 30), sticky="ew")
-    description = ctk.CTkLabel(desc_frame, text=text, text_color=COLORS["text_main"], font=FONTS['second'], anchor="w")
-    description.pack(fill="x", padx=14, pady=14)
+    
+    lbl_desc = CTkAdaptiveLabel(
+        desc_frame, 
+        text=text, 
+        text_color=COLORS["text_main"], 
+        font=FONTS['second'], 
+        justify="left",
+        anchor="w"
+    )
+    lbl_desc.pack(fill="x", expand=True, padx=15, pady=15)
 
 
 def hr_grid(view, row, pady=20):

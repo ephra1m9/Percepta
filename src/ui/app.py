@@ -1,10 +1,10 @@
-import customtkinter as ctk
 import os
+import customtkinter as ctk
 
 from PIL import Image, ImageFont, ImageDraw
 
-from src.config import VERSION
 import src.ui.ui_components as ui_component
+from src.config import VERSION
 from src.ui.views.view_single import create_single_folder_view
 from src.ui.views.view_multi import create_multi_folder_view
 from src.ui.views.view_originals import create_originals_view
@@ -12,6 +12,7 @@ from src.ui.views.view_settings import create_settings_view
 
 ctk.set_appearance_mode("Light") 
 ctk.set_default_color_theme("blue")
+
 
 def load_fonts():
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -27,6 +28,7 @@ def load_fonts():
 
     return os.path.join(fonts_dir, "bootstrap-icons.ttf")
 
+
 def create_font_icon(char_code, font_path, size=24, color="gray20"):
     """Рисует векторную иконку на прозрачном фоне"""
     image = Image.new("RGBA", (size, size), (255, 255, 255, 0))
@@ -39,7 +41,8 @@ def create_font_icon(char_code, font_path, size=24, color="gray20"):
         
     return ctk.CTkImage(light_image=image, size=(size, size))
 
-# Убрали аргумент fonts, так как мы импортировали FONTS глобально
+
+
 def show_error_modal(root, message):
     """Создает и показывает модальное окно с ошибкой"""
     modal = ctk.CTkToplevel(root)
@@ -62,19 +65,18 @@ def show_error_modal(root, message):
     modal.grid_columnconfigure(0, weight=1)
     modal.grid_rowconfigure(0, weight=1)
 
-    # Используем FONTS['main']
     lbl = ctk.CTkLabel(modal, text=message, font=ui_component.FONTS['main'], text_color=ui_component.COLORS.get("text_second", "gray"), wraplength=350)
     lbl.grid(row=0, column=0, padx=20, pady=(30, 10))
 
     btn = ctk.CTkButton(modal, text="Закрыть", fg_color=ui_component.COLORS.get("error", "#E74C3C"), hover_color=ui_component.COLORS.get("error", "#E74C3C"), corner_radius=10, command=modal.destroy)
     btn.grid(row=1, column=0, pady=(0, 30))
 
+
 def main():
     root = ctk.CTk()
     root.title("Percepta — Поиск дубликатов")
     root.geometry("900x700")
     root.minsize(800, 500)
-    # root.resizable(False, False) 
     root.configure(fg_color=ui_component.COLORS["bg_app"])
 
     root.create_font_icon = create_font_icon
@@ -93,7 +95,6 @@ def main():
     sidebar_frame.grid_columnconfigure(0, weight=1) 
     sidebar_frame.grid_rowconfigure(6, weight=1) 
 
-    # Используем FONTS['title']
     ctk.CTkLabel(sidebar_frame, text="Percepta", font=ui_component.FONTS['title'], text_color=ui_component.COLORS["primary"]).grid(row=0, column=0, pady=(40, 40))
 
     icon_single = create_font_icon("\uF42A", icon_path, size=16, color="#333333")
@@ -103,14 +104,14 @@ def main():
 
     nav_buttons = {}
     btn_params = {
-        "font": ui_component.FONTS['main'], "height": 40, "fg_color": "transparent",  # Используем FONTS['main']
+        "font": ui_component.FONTS['main'], "height": 40, "fg_color": "transparent",
         "text_color": "gray20", "hover_color": ui_component.COLORS["bg_app"], "anchor": "w"
     }
 
-    nav_buttons["single"] = ctk.CTkButton(sidebar_frame, text="  Одна папка", image=icon_single, **btn_params)
+    nav_buttons["single"] = ctk.CTkButton(sidebar_frame, text="  Поиск дубликатов", image=icon_single, **btn_params)
     nav_buttons["single"].grid(row=1, column=0, padx=20, pady=5, sticky="ew")
 
-    nav_buttons["multi"] = ctk.CTkButton(sidebar_frame, text="  Несколько папок", image=icon_multi, **btn_params)
+    nav_buttons["multi"] = ctk.CTkButton(sidebar_frame, text="  Поиск по эталону", image=icon_multi, **btn_params)
     nav_buttons["multi"].grid(row=2, column=0, padx=20, pady=5, sticky="ew")
 
     nav_buttons["originals"] = ctk.CTkButton(sidebar_frame, text="  Поиск оригиналов", image=icon_originals, **btn_params)
@@ -124,7 +125,7 @@ def main():
     ctk.CTkLabel(sidebar_frame, text=f"v. {VERSION}", font=ui_component.FONTS['second'], text_color=ui_component.COLORS['text_muted']).grid(row=9, column=0, padx=20, pady=(0, 30))
 
     def error_callback(msg):
-        show_error_modal(root, msg) # Убрали fonts из вызова
+        show_error_modal(root, msg)
 
     # --- ИНИЦИАЛИЗАЦИЯ ЭКРАНОВ ---
     views = {

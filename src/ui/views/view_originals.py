@@ -9,9 +9,8 @@ import src.ui.ui_components as ui_component
 from src.utils import get_image_files
 from src.scanner import find_originals
 
+
 def create_originals_view(parent, app_state, show_error_callback):
-    
-    # --- 1. ГЛАВНЫЙ ФОН И ОБЕРТКА ---
     view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
     
     content = ctk.CTkFrame(view, fg_color="transparent")
@@ -35,7 +34,7 @@ def create_originals_view(parent, app_state, show_error_callback):
 
     # 0. Заголовок
     ui_component.title(content, "Поиск оригиналов")
-    ui_component.description(content, "Ищет исходники в хорошем качестве на сервере для выбранных превью.")
+    ui_component.description(content, "Сравнивает две папки и ищет во второй папке изображения которые уже есть в первой папке, но в лучшем качестве (больше вес или больше разрешение).")
 
     # 1. Выбор папок
     frame_low = ctk.CTkFrame(content, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border'], corner_radius=10)

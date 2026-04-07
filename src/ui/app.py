@@ -75,7 +75,7 @@ def show_error_modal(root, message):
 def main():
     root = ctk.CTk()
     root.title("Percepta — Поиск дубликатов")
-    root.geometry("900x700")
+    root.geometry("900x800")
     root.minsize(800, 500)
     root.configure(fg_color=ui_component.COLORS["bg_app"])
 

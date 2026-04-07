@@ -107,6 +107,25 @@ def description(view, text: str):
     lbl_desc.pack(fill="x", expand=True, padx=15, pady=15)
 
 
+def result_action_btn(parent, btn_text: str, desc_text: str, icon_name):
+    card = ctk.CTkFrame(parent, fg_color=COLORS["bg_input"], corner_radius=8)
+    card.pack(fill="x", pady=(0, 10))
+
+    btn = ctk.CTkButton(card, text=btn_text, image=icon_name, font=FONTS['main'], **BUTTON_SECONDARY)
+    btn.pack(anchor="w", padx=20, pady=(15, 5))
+    
+    CTkAdaptiveLabel(
+        card, 
+        text=desc_text, 
+        text_color=COLORS["text_muted"],
+        font=FONTS['second'],
+        justify="left",
+        anchor="w"
+    ).pack(fill="x", padx=20, pady=(0, 15))
+
+    return btn
+
+
 def hr_grid(view, row, pady=20):
     """Горизонтальная линия (hr) в grid."""
     ctk.CTkFrame(view, height=2, fg_color=COLORS["border"]).grid(row=row, column=0, sticky="ew", pady=pady)

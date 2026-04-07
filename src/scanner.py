@@ -117,9 +117,11 @@ def find_originals(low_res_paths, high_res_paths, tolerance=5):
         low_hashes = low_data_list[0]['hashes']
         
         best_match_path = None
+        best_match_page = None # ДОБАВЛЕНО: переменная для хранения номера страницы
         max_pixels = -1
         
         for s_data in server_data:
+            # Проверяем совпадение хотя бы по одному из ракурсов
             is_match = False
             for lh in low_hashes:
                 for sh in s_data['hashes']:
@@ -128,13 +130,16 @@ def find_originals(low_res_paths, high_res_paths, tolerance=5):
                         break
                 if is_match: break
             
+            # Если нашли совпадение в любом из ракурсов
             if is_match:
                 if s_data['pixels'] > max_pixels:
                     max_pixels = s_data['pixels']
                     best_match_path = s_data['path'] 
+                    best_match_page = s_data['page'] # ДОБАВЛЕНО: запоминаем страницу
         
         if best_match_path:
-            results['found'].append((low_path, best_match_path))
+            # ДОБАВЛЕНО: теперь мы передаем 3 значения (включая страницу)
+            results['found'].append((low_path, best_match_path, best_match_page))
         else:
             results['not_found'].append(low_path)
 

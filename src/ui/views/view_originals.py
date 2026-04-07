@@ -1,6 +1,7 @@
 import os
 import threading
 import shutil
+import fitz
 import customtkinter as ctk
 
 from tkinter import filedialog
@@ -151,7 +152,7 @@ def create_originals_view(parent, app_state, show_error_callback):
 
     def check_ready():
         if state["target_low"] and state["target_server"]:
-            lbl_status.configure(text="✅ Готово к сканированию", text_color=ui_component.COLORS["primary"])
+            lbl_status.configure(text="Готово к сканированию", text_color=ui_component.COLORS["primary"])
         else:
             lbl_status.configure(text="Выберите папки для начала", text_color=ui_component.COLORS["text_muted"])
 
@@ -166,7 +167,7 @@ def create_originals_view(parent, app_state, show_error_callback):
 
         # Вывод НАЙДЕННЫХ
         if found_count > 0:
-            for low_path, high_path in results['found']:
+            for low_path, high_path, page_num in results['found']:
                 group_frame = ctk.CTkFrame(results_scroll, fg_color=ui_component.COLORS["bg_surface"], border_width=1, border_color=ui_component.COLORS["border"], corner_radius=6)
                 group_frame.pack(fill="x", pady=(0, 10), padx=5)
 
@@ -174,8 +175,10 @@ def create_originals_view(parent, app_state, show_error_callback):
                 high_name = os.path.basename(high_path)
                 high_dir = os.path.basename(os.path.dirname(high_path))
 
+                page_info = f" (Стр. {page_num})" if page_num else ""
+
                 ctk.CTkLabel(group_frame, text=f"Превью: {low_name}", font=ui_component.FONTS['main'], text_color=ui_component.COLORS["text_main"]).pack(anchor="w", padx=15, pady=(10, 5))
-                ctk.CTkLabel(group_frame, text=f"↳ Оригинал: [{high_dir}] {high_name}", font=ui_component.FONTS['second'], text_color=ui_component.COLORS["success"]).pack(anchor="w", padx=15, pady=(0, 10))
+                ctk.CTkLabel(group_frame, text=f"↳ Оригинал: [{high_dir}] {high_name}{page_info}", font=ui_component.FONTS['second'], text_color=ui_component.COLORS["success"]).pack(anchor="w", padx=15, pady=(0, 10))
 
         # Вывод НЕ НАЙДЕННЫХ
         if not_found_count > 0:
@@ -193,18 +196,29 @@ def create_originals_view(parent, app_state, show_error_callback):
         
         try:
             count = 0
-            for low_path, high_path in state["found_files"]:
+            
+            for low_path, high_path, page_num in state["found_files"]:
                 low_dir = os.path.dirname(low_path)
                 low_name_no_ext, _ = os.path.splitext(os.path.basename(low_path))
-                _, high_ext = os.path.splitext(high_path)
                 
-                new_target_path = os.path.join(low_dir, low_name_no_ext + high_ext)
-                
-                if os.path.exists(low_path): os.remove(low_path)
-                shutil.copy2(high_path, new_target_path)
+                if page_num:
+                    new_target_path = os.path.join(low_dir, low_name_no_ext + ".png")
+                    if os.path.exists(low_path): os.remove(low_path)
+                    
+                    doc = fitz.open(high_path)
+                    page = doc.load_page(page_num - 1)
+                    pix = page.get_pixmap(dpi=300)
+                    pix.save(new_target_path)
+                    doc.close()
+                else:
+                    _, high_ext = os.path.splitext(high_path)
+                    new_target_path = os.path.join(low_dir, low_name_no_ext + high_ext)
+                    if os.path.exists(low_path): os.remove(low_path)
+                    shutil.copy2(high_path, new_target_path)
+                    
                 count += 1
             
-            show_message(f"✅ Успешно заменено: {count}")
+            show_message(f"Успешно заменено: {count}")
             state["found_files"] = []
             view.after(2500, lambda: switch_view("setup"))
             
@@ -217,17 +231,27 @@ def create_originals_view(parent, app_state, show_error_callback):
         
         try:
             count = 0
-            for low_path, high_path in state["found_files"]:
+            import fitz
+            
+            for low_path, high_path, page_num in state["found_files"]:
                 low_dir = os.path.dirname(low_path)
-                
                 low_name_no_ext, _ = os.path.splitext(os.path.basename(low_path))
                 
-                _, high_ext = os.path.splitext(high_path)
-                
-                new_name = f"{low_name_no_ext}_original{high_ext}"
-                dest_path = os.path.join(low_dir, new_name)
-                
-                shutil.copy2(high_path, dest_path)
+                if page_num:
+                    new_name = f"{low_name_no_ext}_original.png"
+                    dest_path = os.path.join(low_dir, new_name)
+                    
+                    doc = fitz.open(high_path)
+                    page = doc.load_page(page_num - 1)
+                    pix = page.get_pixmap(dpi=300)
+                    pix.save(dest_path)
+                    doc.close()
+                else:
+                    _, high_ext = os.path.splitext(high_path)
+                    new_name = f"{low_name_no_ext}_original{high_ext}"
+                    dest_path = os.path.join(low_dir, new_name)
+                    shutil.copy2(high_path, dest_path)
+                    
                 count += 1
             
             show_message(f"Скопировано: {count}")
@@ -247,20 +271,35 @@ def create_originals_view(parent, app_state, show_error_callback):
             
             report_lines = ["Отчет о найденных оригиналах\n", "="*50 + "\n\n"]
             count = 0
+            import fitz
             
-            for low_path, high_path in state["found_files"]:
+            for low_path, high_path, page_num in state["found_files"]:
                 low_name = os.path.basename(low_path)
                 high_name = os.path.basename(high_path)
                 
-                shutil.copy2(high_path, os.path.join(save_dir, high_name))
-                report_lines.append(f"Изображение: {low_name}  --->  Оригинал: {high_name}\n")
+                if page_num:
+                    high_name_no_ext, _ = os.path.splitext(high_name)
+                    new_high_name = f"{high_name_no_ext}_page_{page_num}.png"
+                    dest_path = os.path.join(save_dir, new_high_name)
+                    
+                    doc = fitz.open(high_path)
+                    page = doc.load_page(page_num - 1)
+                    pix = page.get_pixmap(dpi=300)
+                    pix.save(dest_path)
+                    doc.close()
+                    
+                    report_lines.append(f"Изображение: {low_name}  --->  Оригинал: {high_name} (Стр. {page_num})\n")
+                else:
+                    shutil.copy2(high_path, os.path.join(save_dir, high_name))
+                    report_lines.append(f"Изображение: {low_name}  --->  Оригинал: {high_name}\n")
+                    
                 count += 1
             
             report_path = os.path.join(save_dir, "_report.txt")
             with open(report_path, "w", encoding="utf-8") as f:
                 f.writelines(report_lines)
             
-            show_message(f"✅ Сохранено в 'Found_Originals': {count}")
+            show_message(f"Сохранено в 'Found_Originals': {count}")
             state["found_files"] = []
             view.after(2500, lambda: switch_view("setup"))
             

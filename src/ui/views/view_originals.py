@@ -13,10 +13,8 @@ def create_originals_view(parent, app_state, show_error_callback):
     view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
     
     content = ctk.CTkFrame(view, fg_color="transparent")
-    # Уменьшаем внешние отступы (pady=20 вместо 40), чтобы выгадать еще 40px по высоте
     content.pack(fill="both", expand=True, padx=40, pady=20)
     
-    # Теперь контейнер занимает весь content
     main_container = ctk.CTkFrame(content, fg_color="transparent")
     main_container.pack(fill="both", expand=True)
     main_container.grid_columnconfigure(0, weight=1)
@@ -31,7 +29,8 @@ def create_originals_view(parent, app_state, show_error_callback):
     # Иконки
     icon_folder = parent.create_font_icon("\uF3D1", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
     icon_search = parent.create_font_icon("\uF52A", parent.icon_path, size=16, color=ui_component.COLORS["text_light"])
-    icon_copy = parent.create_font_icon("\uF721", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
+    icon_copy_folder = parent.create_font_icon("\uF721", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
+    icon_copy = parent.create_font_icon("\uF759", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
     icon_replace = parent.create_font_icon("\uF51D", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
     icon_back = parent.create_font_icon("\uF112", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
 
@@ -39,8 +38,6 @@ def create_originals_view(parent, app_state, show_error_callback):
     setup_frame = ctk.CTkFrame(main_container, fg_color="transparent")
     setup_frame.grid_columnconfigure(0, weight=1)
     
-    # --- ХАК ДЛЯ ЭКОНОМИИ МЕСТА ---
-    # title занимает row=0, description занимает row=1
     ui_component.title(setup_frame, "Поиск оригиналов")
     ui_component.description(
         setup_frame, 
@@ -48,7 +45,6 @@ def create_originals_view(parent, app_state, show_error_callback):
         "но в лучшем качестве (больше вес или больше разрешение)."
     )
 
-    # Используем grid (row=2) вместо pack
     frame_low = ctk.CTkFrame(setup_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border'], corner_radius=10)
     frame_low.grid(row=2, column=0, sticky="ew", pady=(20, 10))
     btn_low = ctk.CTkButton(frame_low, text="Папка на ретушь", image=icon_folder, font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
@@ -56,7 +52,6 @@ def create_originals_view(parent, app_state, show_error_callback):
     lbl_low = ctk.CTkLabel(frame_low, text="Сжатые картинки от куратора", text_color=ui_component.COLORS["text_muted"], font=ui_component.FONTS['second'], anchor="e")
     lbl_low.pack(side="left", padx=10, pady=10, fill="x", expand=True) 
 
-    # Используем grid (row=3) вместо pack
     frame_server = ctk.CTkFrame(setup_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border'], corner_radius=10)
     frame_server.grid(row=3, column=0, sticky="ew", pady=(0, 20))
     btn_server = ctk.CTkButton(frame_server, text="Папка с исходниками", image=icon_folder, font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
@@ -64,11 +59,9 @@ def create_originals_view(parent, app_state, show_error_callback):
     lbl_server = ctk.CTkLabel(frame_server, text="Архив / исходники сервера", text_color=ui_component.COLORS["text_muted"], font=ui_component.FONTS['second'], anchor="e")
     lbl_server.pack(side="left", padx=10, pady=10, fill="x", expand=True)
 
-    # Используем grid (row=4) вместо pack
     btn_start = ctk.CTkButton(setup_frame, image=icon_search, text="Найти оригиналы", font=ui_component.FONTS['main'], **ui_component.BUTTON_PRIMARY)
     btn_start.grid(row=4, column=0, sticky="ew")
 
-    # Используем grid (row=5) вместо pack
     lbl_status = ctk.CTkLabel(setup_frame, text="Выберите папки для начала", font=ui_component.FONTS['second'], text_color=ui_component.COLORS["text_muted"])
     lbl_status.grid(row=5, column=0, pady=10)
 
@@ -82,7 +75,7 @@ def create_originals_view(parent, app_state, show_error_callback):
     # ================= ЭКРАН 3: РЕЗУЛЬТАТЫ И КАРТОЧКИ =================
     results_frame = ctk.CTkFrame(main_container, fg_color="transparent")
 
-    # 1. Шапка с навигацией (всегда сверху)
+    # 1. Шапка с навигацией
     res_top_bar = ctk.CTkFrame(results_frame, fg_color="transparent")
     res_top_bar.pack(side="top", fill="x", pady=(0, 10))
     
@@ -91,7 +84,7 @@ def create_originals_view(parent, app_state, show_error_callback):
     lbl_results_header = ctk.CTkLabel(res_top_bar, text="", font=ui_component.FONTS['main'], text_color=ui_component.COLORS["text_main"])
     lbl_results_header.pack(side="right", padx=10)
 
-    # 2. Карточки действий (прибиваем намертво ко дну)
+    # 2. Карточки действий
     actions_grid = ctk.CTkFrame(results_frame, fg_color="transparent")
     actions_grid.pack(side="bottom", fill="x", pady=(10, 0))
 
@@ -102,14 +95,21 @@ def create_originals_view(parent, app_state, show_error_callback):
         icon_replace
     )
 
-    btn_copy_report = ui_component.result_action_btn(
+    btn_copy = ui_component.result_action_btn(
         actions_grid, 
-        "Собрать в папку", 
-        "Копирует оригиналы в новую папку 'Found_Originals' и создает текстовый отчет", 
+        "Скопировать оригиналы", 
+        "Копирует найденные оригиналы и переименовывает их", 
         icon_copy
     )
 
-    # 3. Список результатов (занимает всё пространство между шапкой и дном)
+    btn_copy_report = ui_component.result_action_btn(
+        actions_grid, 
+        "Скопировать оригиналы в отдельную папку", 
+        "Копирует оригиналы в новую папку 'Found_Originals' и создает текстовый отчет", 
+        icon_copy_folder
+    )
+
+    # 3. Список результатов
     results_scroll = ctk.CTkScrollableFrame(results_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS["border"], corner_radius=8)
     results_scroll.pack(side="top", fill="both", expand=True, pady=(0, 5))
 
@@ -131,7 +131,6 @@ def create_originals_view(parent, app_state, show_error_callback):
         lbl_message_big.configure(text=text)
         switch_view("message")
 
-    # Скрываем все экраны, кроме стартового
     switch_view("setup")
 
 
@@ -212,6 +211,33 @@ def create_originals_view(parent, app_state, show_error_callback):
         except Exception as e:
             show_error_callback(f"Ошибка при замене:\n{e}")
 
+
+    def process_copy():
+        if not state["found_files"]: return
+        
+        try:
+            count = 0
+            for low_path, high_path in state["found_files"]:
+                low_dir = os.path.dirname(low_path)
+                
+                low_name_no_ext, _ = os.path.splitext(os.path.basename(low_path))
+                
+                _, high_ext = os.path.splitext(high_path)
+                
+                new_name = f"{low_name_no_ext}_original{high_ext}"
+                dest_path = os.path.join(low_dir, new_name)
+                
+                shutil.copy2(high_path, dest_path)
+                count += 1
+            
+            show_message(f"Скопировано: {count}")
+            state["found_files"] = []
+            view.after(2500, lambda: switch_view("setup"))
+            
+        except Exception as e:
+            show_error_callback(f"Ошибка при копировании:\n{e}")
+
+
     def process_copy_report():
         if not state["found_files"]: return
         
@@ -270,6 +296,7 @@ def create_originals_view(parent, app_state, show_error_callback):
     btn_back.configure(command=lambda: switch_view("setup"))
     btn_start.configure(command=lambda: (btn_start.configure(state="disabled"), show_message("Сравнение файлов..."), threading.Thread(target=run_scan, args=(state["target_low"], state["target_server"], app_state["tolerance"])).start()))
     btn_replace.configure(command=process_replace)
+    btn_copy.configure(command=process_copy)
     btn_copy_report.configure(command=process_copy_report)
 
     return view

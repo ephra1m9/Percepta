@@ -1,3 +1,3 @@
-VERSION="0.3"
+VERSION="0.4"
 
 VALID_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.bmp', '.pdf'}

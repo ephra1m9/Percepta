@@ -81,7 +81,7 @@ def main():
 
     root.create_font_icon = create_font_icon
 
-    app_state = {"tolerance": 5}
+    app_state = {"tolerance": 7}
     icon_path = load_fonts()
     root.icon_path = icon_path
 

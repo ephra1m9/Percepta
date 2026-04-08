@@ -89,8 +89,11 @@ class CTkAdaptiveLabel(ctk.CTkLabel):
             self._last_width = event.width
             
             max_chars = max(10, int(event.width / 7.5))
+            paragraphs = self._raw_text.split('\n')
+
+            wrapped_paragraphs = [textwrap.fill(p, width=max_chars) for p in paragraphs]
             
-            wrapped_text = textwrap.fill(self._raw_text, width=max_chars)
+            wrapped_text = '\n'.join(wrapped_paragraphs)
             
             self.configure(text=wrapped_text)
 
@@ -106,10 +109,10 @@ def description(view, text: str):
     desc_frame.grid(row=1, column=0, pady=(0, 30), sticky="ew")
     
     lbl_desc = CTkAdaptiveLabel(
-        desc_frame, 
-        text=text, 
-        text_color=COLORS["text_main"], 
-        font=FONTS['second'], 
+        desc_frame,
+        text=text,
+        text_color=COLORS["text_main"],
+        font=FONTS['second'],
         justify="left",
         anchor="w"
     )

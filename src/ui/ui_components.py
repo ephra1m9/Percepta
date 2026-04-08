@@ -117,6 +117,7 @@ def description(view, text: str):
 
 
 def result_action_btn(parent, btn_text: str, desc_text: str, icon_name):
+    """Кнопка для действия с результатом"""
     card = ctk.CTkFrame(parent, fg_color=COLORS["bg_input"], corner_radius=8)
     card.pack(fill="x", pady=(0, 10))
 

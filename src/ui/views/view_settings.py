@@ -2,31 +2,66 @@ import customtkinter as ctk
 
 import src.ui.ui_components as ui_component
 
+
 def create_settings_view(parent, app_state, show_error_callback=None):
-    view = ctk.CTkFrame(parent)
+    view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
 
     view.grid_columnconfigure(0, weight=1)
     view.grid_rowconfigure(2, weight=1)
 
-    ctk.CTkLabel(view, text="Настройки программы", font=ui_component.FONTS['title']).grid(row=0, column=0, sticky="w", padx=30, pady=(30, 30))
+    content = ctk.CTkFrame(view, fg_color="transparent")
+    content.pack(fill="both", expand=True, padx=40, pady=20)
 
-    card = ctk.CTkFrame(view, fg_color="#F9F9FB", corner_radius=10, border_width=1, border_color="#E5E5EA")
-    card.grid(row=1, column=0, sticky="ew", padx=30, pady=(0, 20))
-    card.grid_columnconfigure(0, weight=1)
+    ui_component.title(content, "Настройки программы")
 
-    lbl_tolerance = ctk.CTkLabel(card, text=f"Чувствительность алгоритма: {app_state['tolerance']}", font=ui_component.FONTS['main'])
-    lbl_tolerance.grid(row=0, column=0, sticky="w", padx=25, pady=(25, 5))
 
-    desc = "Определяет допустимую разницу между картинками.\n0 — только точные копии, 5-10 — находит слегка сжатые или отретушированные фото."
-    ctk.CTkLabel(card, text=desc, font=ui_component.FONTS['second'], text_color="gray", justify="left").grid(row=1, column=0, sticky="w", padx=25, pady=(0, 20))
-
+    # Настройки чувствительности алгоритма
+    tolerance_frame = ctk.CTkFrame(content, fg_color="transparent")
+    tolerance_frame.grid(row=1, column=0, sticky="ew")
+    tolerance_frame.grid_columnconfigure(0, weight=1)
+    
     def update_tolerance(value):
         val = int(value)
         app_state['tolerance'] = val
         lbl_tolerance.configure(text=f"Чувствительность алгоритма: {val}")
+    
+    tolerance_row = ctk.CTkFrame(tolerance_frame, fg_color="transparent")
+    tolerance_row.grid(row=0, column=0, sticky="w", pady=5)
 
-    slider = ctk.CTkSlider(card, from_=0, to=15, number_of_steps=15, command=update_tolerance)
+    slider = ctk.CTkSlider(tolerance_row, from_=0, to=15, number_of_steps=15, command=update_tolerance)
     slider.set(app_state['tolerance'])
-    slider.grid(row=2, column=0, sticky="ew", padx=25, pady=(0, 30))
+    slider.pack(side="left")
+
+    lbl_tolerance = ctk.CTkLabel(tolerance_row, text=f"Чувствительность алгоритма: {app_state['tolerance']}", font=ui_component.FONTS['main'])
+    lbl_tolerance.pack(side="left", padx=(15, 0))
+
+    desc_tolerance = "Определяет допустимую разницу между картинками.\n0 — только точные копии, 5-10 — находит слегка сжатые или отретушированные фото."
+    desc_tolerance_frame = ui_component.CTkAdaptiveLabel(tolerance_frame, text=desc_tolerance, font=ui_component.FONTS['second'], text_color=ui_component.COLORS['text_second'], justify="left", anchor="w")
+    desc_tolerance_frame.grid(row=1, column=0, columnspan=2, sticky="w")
+
+
+    # Настройка поиска во вложенных папках
+    search_recursive_frame = ctk.CTkFrame(content, fg_color="transparent")
+    search_recursive_frame.grid(row=4, column=0, sticky="ew", pady=(25, 0))
+    search_recursive_frame.grid_columnconfigure(1, weight=1)
+
+    def toggle_search_recursive():
+        app_state['search_recursive'] = not app_state.get('search_recursive', False)
+        if app_state['search_recursive']:
+            switch.select()
+        else:
+            switch.deselect()
+
+    switch = ctk.CTkSwitch(search_recursive_frame, text="Поиск во вложенных папках", font=ui_component.FONTS['main'], command=toggle_search_recursive, onvalue=True, offvalue=False)
+    switch.grid(row=0, column=1, sticky="w")
+
+    if app_state.get('search_recursive', False):
+        switch.select()
+    else:
+        switch.deselect()
+
+    desc_recursive = "При включении будет выполняться поиск во всех подпапках выбранных директорий."
+    desc_recursive_frame = ui_component.CTkAdaptiveLabel(search_recursive_frame, text=desc_recursive, text_color=ui_component.COLORS["text_second"], font=ui_component.FONTS['second'], justify="left", anchor="w")
+    desc_recursive_frame.grid(row=1, column=0, columnspan=2, sticky="w", pady=(5, 0))
 
     return view

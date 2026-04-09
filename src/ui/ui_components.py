@@ -119,6 +119,42 @@ def description(view, text: str):
     lbl_desc.pack(fill="x", expand=True, padx=15, pady=15)
 
 
+def result_action_card_btn(parent, title_text: str, desc_text: str, icon_name, event_handler):
+    """"Карточка-кнопка для действия с результатом"""
+    card = ctk.CTkFrame(parent, fg_color="transparent", corner_radius=10, cursor="hand2")
+    card.pack(fill="x", pady=(0, 10))
+
+    header_frame = ctk.CTkFrame(card, fg_color="transparent", cursor="hand2")
+    header_frame.pack(fill="x", padx=15, pady=(15, 5))
+
+    icon = ctk.CTkLabel(header_frame, text="", image=icon_name, cursor="hand2")
+    icon.pack(side="left", padx=(0, 10))
+
+    title = ctk.CTkLabel(header_frame, text=title_text, font=FONTS['main'], text_color=COLORS["text_main"], cursor="hand2")
+    title.pack(side="left")
+
+    description = CTkAdaptiveLabel(card, text=desc_text, font=FONTS['second'], text_color=COLORS["text_muted"], justify="left", anchor="w", cursor="hand2")
+    description.pack(fill="x", padx=15, pady=(0, 15))
+
+    def on_click(event):
+        event_handler()
+
+    def on_enter(event):
+        card.configure(fg_color=COLORS["primary_light"])
+
+    def on_leave(event):
+        card.configure(fg_color="transparent")
+
+    widgets = [card, header_frame, icon, title, description]
+    
+    for widget in widgets:
+        widget.bind("<Button-1>", on_click)
+        widget.bind("<Enter>", on_enter)
+        widget.bind("<Leave>", on_leave)
+
+    return card
+
+
 def result_action_btn(parent, btn_text: str, desc_text: str, icon_name):
     """Кнопка для действия с результатом"""
     card = ctk.CTkFrame(parent, fg_color=COLORS["bg_input"], corner_radius=8)

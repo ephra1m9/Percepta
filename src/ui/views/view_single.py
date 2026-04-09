@@ -32,7 +32,7 @@ def create_single_folder_view(parent, app_state, show_error_callback):
     icon_search = parent.create_font_icon("\uF52A", parent.icon_path, size=16, color=ui_component.COLORS["text_light"])
     icon_move = parent.create_font_icon("\uF3D4", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
     icon_delete = parent.create_font_icon("\uF5DD", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
-    icon_back = parent.create_font_icon("\uF112", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
+    icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=15, color=ui_component.COLORS["danger"])
 
     # ================= ЭКРАН 1: НАСТРОЙКИ =================
     setup_frame = ctk.CTkFrame(main_container, fg_color="transparent")
@@ -68,7 +68,7 @@ def create_single_folder_view(parent, app_state, show_error_callback):
     # Шапка
     res_top_bar = ctk.CTkFrame(results_frame, fg_color="transparent")
     res_top_bar.pack(side="top", fill="x", pady=(0, 10))
-    btn_back = ctk.CTkButton(res_top_bar, text="Назад к настройкам", image=icon_back, font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
+    btn_back = ctk.CTkButton(res_top_bar, text="Отмена", image=icon_cancel, font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY_DANGER)
     btn_back.pack(side="left")
     lbl_results_header = ctk.CTkLabel(res_top_bar, text="", font=ui_component.FONTS['main'], text_color=ui_component.COLORS["text_main"])
     lbl_results_header.pack(side="right", padx=10)
@@ -77,18 +77,20 @@ def create_single_folder_view(parent, app_state, show_error_callback):
     actions_grid = ctk.CTkFrame(results_frame, fg_color="transparent")
     actions_grid.pack(side="bottom", fill="x", pady=(10, 0))
 
-    btn_move = ui_component.result_action_btn(
+    btn_move = ui_component.result_action_card_btn(
         actions_grid, 
         "В отдельную папку", 
         "Перемещает все найденные дубликаты (копии) в папку 'duplicates'", 
-        icon_move
+        icon_move,
+        lambda: process_duplicates("move")
     )
 
-    btn_delete = ui_component.result_action_btn(
+    btn_delete = ui_component.result_action_card_btn(
         actions_grid, 
         "Удалить дубликаты", 
         "Безвозвратно удаляет все копии, оставляя только файл с лучшим качеством", 
-        icon_delete
+        icon_delete,
+        lambda: process_duplicates("delete")
     )
 
     # Список
@@ -132,7 +134,7 @@ def create_single_folder_view(parent, app_state, show_error_callback):
             widget.destroy()
 
         count = sum(len(group) - 1 for group in duplicates)
-        lbl_results_header.configure(text=f"Проверено: {total_files}   |   Найдено: {count}")
+        lbl_results_header.configure(text=f"Проверено: {total_files}   |   Дубликатов: {count}")
 
         for group in duplicates:
             group_frame = ctk.CTkFrame(results_scroll, fg_color=ui_component.COLORS["bg_input"], corner_radius=6)
@@ -218,7 +220,5 @@ def create_single_folder_view(parent, app_state, show_error_callback):
     btn_folder.configure(command=select_folder)
     btn_back.configure(command=lambda: switch_view("setup"))
     btn_start.configure(command=lambda: (btn_start.configure(state="disabled"), show_message("Анализ файлов..."), threading.Thread(target=run_scan, args=(state["target_folder"], app_state["tolerance"])).start()))
-    btn_move.configure(command=lambda: process_duplicates("move"))
-    btn_delete.configure(command=lambda: process_duplicates("delete"))
 
     return view

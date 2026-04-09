@@ -121,7 +121,7 @@ def description(view, text: str):
 
 def result_action_card_btn(parent, title_text: str, desc_text: str, icon_name, event_handler):
     """"Карточка-кнопка для действия с результатом"""
-    card = ctk.CTkFrame(parent, fg_color="transparent", corner_radius=10, cursor="hand2")
+    card = ctk.CTkFrame(parent, fg_color="transparent", border_width=1, border_color=COLORS["border"], corner_radius=10, cursor="hand2")
     card.pack(fill="x", pady=(0, 10))
 
     header_frame = ctk.CTkFrame(card, fg_color="transparent", cursor="hand2")
@@ -133,7 +133,7 @@ def result_action_card_btn(parent, title_text: str, desc_text: str, icon_name, e
     title = ctk.CTkLabel(header_frame, text=title_text, font=FONTS['main'], text_color=COLORS["text_main"], cursor="hand2")
     title.pack(side="left")
 
-    description = CTkAdaptiveLabel(card, text=desc_text, font=FONTS['second'], text_color=COLORS["text_muted"], justify="left", anchor="w", cursor="hand2")
+    description = CTkAdaptiveLabel(card, text=desc_text, font=FONTS['second'], text_color=COLORS["text_second"], justify="left", anchor="w", cursor="hand2")
     description.pack(fill="x", padx=15, pady=(0, 15))
 
     def on_click(event):

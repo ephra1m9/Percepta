@@ -34,7 +34,7 @@ def create_originals_view(parent, app_state, show_error_callback):
     icon_copy_folder = parent.create_font_icon("\uF721", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
     icon_copy = parent.create_font_icon("\uF759", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
     icon_replace = parent.create_font_icon("\uF51D", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
-    icon_back = parent.create_font_icon("\uF112", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
+    icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=15, color=ui_component.COLORS["danger"])
 
     # ================= ЭКРАН 1: НАСТРОЙКИ =================
     setup_frame = ctk.CTkFrame(main_container, fg_color="transparent")
@@ -81,7 +81,7 @@ def create_originals_view(parent, app_state, show_error_callback):
     res_top_bar = ctk.CTkFrame(results_frame, fg_color="transparent")
     res_top_bar.pack(side="top", fill="x", pady=(0, 10))
     
-    btn_back = ctk.CTkButton(res_top_bar, text="Назад", image=icon_back, font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
+    btn_back = ctk.CTkButton(res_top_bar, text="Отмена", image=icon_cancel, font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY_DANGER)
     btn_back.pack(side="left")
     lbl_results_header = ctk.CTkLabel(res_top_bar, text="", font=ui_component.FONTS['main'], text_color=ui_component.COLORS["text_main"])
     lbl_results_header.pack(side="right", padx=10)
@@ -90,25 +90,28 @@ def create_originals_view(parent, app_state, show_error_callback):
     actions_grid = ctk.CTkFrame(results_frame, fg_color="transparent")
     actions_grid.pack(side="bottom", fill="x", pady=(10, 0))
 
-    btn_replace = ui_component.result_action_btn(
+    ui_component.result_action_card_btn(
         actions_grid, 
         "Заменить на оригиналы", 
         "Удаляет сжатые превью и автоматически подставляет на их место найденные оригиналы", 
-        icon_replace
+        icon_replace,
+        lambda: process_replace
     )
 
-    btn_copy = ui_component.result_action_btn(
+    ui_component.result_action_card_btn(
         actions_grid, 
         "Скопировать оригиналы", 
         "Копирует найденные оригиналы и переименовывает их", 
-        icon_copy
+        icon_copy,
+        lambda: process_copy
     )
 
-    btn_copy_report = ui_component.result_action_btn(
+    ui_component.result_action_card_btn(
         actions_grid, 
         "Скопировать оригиналы в отдельную папку", 
         "Копирует оригиналы в новую папку 'Found_Originals' и создает текстовый отчет", 
-        icon_copy_folder
+        icon_copy_folder,
+        lambda: process_copy_report
     )
 
     # 3. Список результатов
@@ -343,8 +346,5 @@ def create_originals_view(parent, app_state, show_error_callback):
     btn_server.configure(command=select_server)
     btn_back.configure(command=lambda: switch_view("setup"))
     btn_start.configure(command=lambda: (btn_start.configure(state="disabled"), show_message("Сравнение файлов..."), threading.Thread(target=run_scan, args=(state["target_low"], state["target_server"], app_state["tolerance"])).start()))
-    btn_replace.configure(command=process_replace)
-    btn_copy.configure(command=process_copy)
-    btn_copy_report.configure(command=process_copy_report)
 
     return view

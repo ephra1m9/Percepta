@@ -92,18 +92,20 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
     actions_grid = ctk.CTkFrame(results_frame, fg_color="transparent")
     actions_grid.pack(side="bottom", fill="x", pady=(10, 0))
 
-    btn_copy = ui_component.result_action_btn(
+    ui_component.result_action_card_btn(
         actions_grid, 
         "Скопировать найденные", 
         "Копирует найденные изображения из рабочих папок в эталонную папку", 
-        icon_copy
+        icon_copy,
+        lambda: process_duplicates("copy")
     )
 
-    btn_delete = ui_component.result_action_btn(
+    ui_component.result_action_card_btn(
         actions_grid, 
         "Удалить", 
         "Удаляет из эталонной папки те изображения, которые нашлись в остальных папках", 
-        icon_delete
+        icon_delete,
+        lambda: process_duplicates("delete")
     )
 
     # Список
@@ -258,8 +260,8 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
     btn_clear.configure(command=clear_folders)
     btn_back.configure(command=lambda: switch_view("setup"))
     btn_start.configure(command=lambda: (btn_start.configure(state="disabled"), show_message("Анализ файлов..."), threading.Thread(target=run_scan, args=(state["reference_folder"], list(state["target_folders"]), app_state["tolerance"])).start()))
-    btn_copy.configure(command=lambda: process_duplicates("copy"))
-    btn_delete.configure(command=lambda: process_duplicates("delete"))
+    # btn_copy.configure(command=lambda: process_duplicates("copy"))
+    # btn_delete.configure(command=lambda: process_duplicates("delete"))
 
     update_list()
     return view

@@ -82,7 +82,7 @@ def main():
 
     root.create_font_icon = create_font_icon
 
-    app_state = {"tolerance": 7}
+    app_state = {"tolerance": 7, "search_recursive": 0}
     icon_path = load_fonts()
     root.icon_path = icon_path
 

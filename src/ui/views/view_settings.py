@@ -15,7 +15,6 @@ def create_settings_view(parent, app_state, show_error_callback=None):
 
     ui_component.title(content, "Настройки программы")
 
-
     # Настройки чувствительности алгоритма    
     def update_tolerance(value):
         val = int(value)
@@ -36,7 +35,6 @@ def create_settings_view(parent, app_state, show_error_callback=None):
     desc_tolerance = "Определяет допустимую разницу между картинками.\n0 — только точные копии, 5-10 — находит слегка сжатые или отретушированные фото."
     desc_tolerance_frame = ui_component.CTkAdaptiveLabel(tolerance_frame, text=desc_tolerance, font=ui_component.FONTS['second'], text_color=ui_component.COLORS['text_second'], justify="left", anchor="w")
     desc_tolerance_frame.pack(fill="x")
-
 
     # Настройка поиска во вложенных папках
     def toggle_search_recursive():

@@ -4,7 +4,7 @@ from .config import VALID_EXTENSIONS
 
 
 def get_image_files(directory_path, recursive=True):
-    """Проходит по указанной папке (включая вложенные) и возвращает список путей ко всем картинкам."""
+    """Проходит по указанной папке (включая вложенные) и возвращает список путей ко всем картинкам"""
     image_paths = []
     path = pathlib.Path(directory_path)
 
@@ -21,4 +21,5 @@ def get_image_files(directory_path, recursive=True):
 
 
 def update_status(label_widget, message):
+    """Обновляет текст статуса"""
     label_widget.after(0, lambda: label_widget.configure(text=message))

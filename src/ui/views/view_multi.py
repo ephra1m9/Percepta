@@ -10,6 +10,7 @@ import src.ui.ui_components as ui_component
 from src.utils import get_image_files
 from src.scanner import find_duplicates
 
+
 def create_multi_folder_view(parent, app_state, show_error_callback):
     view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
     
@@ -123,6 +124,7 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
         elif view_name == "results":
             results_frame.grid(row=0, column=0, sticky="nsew")
 
+
     def show_message(text):
         lbl_message_big.configure(text=text)
         switch_view("message")
@@ -138,6 +140,7 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
             lbl_ref.configure(text=os.path.basename(folder), text_color=ui_component.COLORS["text_main"])
             check_ready_state()
 
+
     def update_list():
         listbox.configure(state="normal")
         listbox.delete("1.0", "end")
@@ -149,21 +152,25 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
         listbox.configure(state="disabled")
         check_ready_state()
 
+
     def add_search_folder():
         folder = filedialog.askdirectory()
         if folder and folder not in state["target_folders"]:
             state["target_folders"].append(folder)
             update_list()
 
+
     def clear_folders():
         state["target_folders"].clear()
         update_list()
+
 
     def check_ready_state():
         if state["reference_folder"] and state["target_folders"]:
             lbl_status.configure(text="✅ Готово к сканированию", text_color=ui_component.COLORS["primary"])
         else:
             lbl_status.configure(text="Настройте папки для начала", text_color=ui_component.COLORS["text_muted"])
+
 
     def render_results(duplicates, total_files):
         for widget in results_scroll.winfo_children():
@@ -181,6 +188,7 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
                 ctk.CTkLabel(group_frame, text=f"↳ {os.path.basename(dup_path)}", font=ui_component.FONTS['second'], text_color=ui_component.COLORS["text_main"]).pack(anchor="w", padx=15, pady=(0, 10))
 
         switch_view("results")
+
 
     def process_duplicates(action):
         if not state["found_groups"]: return
@@ -208,6 +216,7 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
                 
         except Exception as e:
             show_error_callback(f"Ошибка:\n{e}")
+
 
     def run_scan(ref_folder, search_folders, tolerance):
         try:

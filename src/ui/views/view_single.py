@@ -10,8 +10,8 @@ import src.ui.ui_components as ui_component
 from src.utils import get_image_files
 from src.scanner import find_duplicates
 
-def create_single_folder_view(parent, app_state, show_error_callback):
-    
+
+def create_single_folder_view(parent, app_state, show_error_callback):    
     view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
     
     content = ctk.CTkFrame(view, fg_color="transparent")
@@ -62,7 +62,7 @@ def create_single_folder_view(parent, app_state, show_error_callback):
     lbl_message_big.place(relx=0.5, rely=0.5, anchor="center") 
 
 
-    # ================= ЭКРАН 3: РЕЗУЛЬТАТЫ И КАРТОЧКИ =================
+    # ================= ЭКРАН 3: РЕЗУЛЬТАТЫ И КНОПКИ =================
     results_frame = ctk.CTkFrame(main_container, fg_color="transparent")
     
     # Шапка
@@ -118,13 +118,16 @@ def create_single_folder_view(parent, app_state, show_error_callback):
 
     # --- ЛОГИКА РАБОТЫ ---
     def select_folder():
+        """Выбирает папку для анализа"""
         folder = filedialog.askdirectory()
         if folder:
             state["target_folder"] = folder
             lbl_folder.configure(text=os.path.basename(folder), text_color=ui_component.COLORS["text_main"])
             lbl_status.configure(text="✅ Готово к сканированию", text_color=ui_component.COLORS["primary"])
 
+
     def render_results(duplicates, total_files):
+        """Отображает результаты поиска дубликатов"""
         for widget in results_scroll.winfo_children():
             widget.destroy()
 
@@ -144,7 +147,9 @@ def create_single_folder_view(parent, app_state, show_error_callback):
 
         switch_view("results")
 
+
     def process_duplicates(action):
+        """Обрабатывает найденные дубликаты"""
         if not state["pending_files"]: return
             
         count = len(state["pending_files"])
@@ -168,7 +173,9 @@ def create_single_folder_view(parent, app_state, show_error_callback):
         except Exception as e:
             show_error_callback(f"Не удалось обработать файлы:\n{e}")
 
+
     def run_scan(folder, tolerance):
+        """Запускает поиск дубликатов"""
         try:
             files = get_image_files(folder, recursive=False)
             if not files: 

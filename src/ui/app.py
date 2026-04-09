@@ -10,11 +10,13 @@ from src.ui.views.view_multi import create_multi_folder_view
 from src.ui.views.view_originals import create_originals_view
 from src.ui.views.view_settings import create_settings_view
 
+
 ctk.set_appearance_mode("Light") 
 ctk.set_default_color_theme("blue")
 
 
 def load_fonts():
+    """Загружает шрифты"""
     current_dir = os.path.dirname(os.path.abspath(__file__))
     fonts_dir = os.path.join(current_dir, "..", "..", "assets", "fonts")
 
@@ -40,7 +42,6 @@ def create_font_icon(char_code, font_path, size=24, color="gray20"):
         print(f"❌ Ошибка иконки: {e} | Путь: {font_path}") 
         
     return ctk.CTkImage(light_image=image, size=(size, size))
-
 
 
 def show_error_modal(root, message):
@@ -97,6 +98,7 @@ def main():
 
     ctk.CTkLabel(sidebar_frame, text="Percepta", font=ui_component.FONTS['title'], text_color=ui_component.COLORS["primary"]).grid(row=0, column=0, pady=(40, 40))
 
+    # Иконки
     icon_single = create_font_icon("\uF42A", icon_path, size=16, color="#333333")
     icon_multi = create_font_icon("\uF42B", icon_path, size=16, color="#333333")
     icon_originals = create_font_icon("\uF787", icon_path, size=16, color="#333333")
@@ -108,6 +110,7 @@ def main():
         "text_color": "gray20", "hover_color": ui_component.COLORS["bg_app"], "anchor": "w"
     }
 
+    # Кнопки
     nav_buttons["single"] = ctk.CTkButton(sidebar_frame, text="  Поиск дубликатов", image=icon_single, **btn_params)
     nav_buttons["single"].grid(row=1, column=0, padx=20, pady=5, sticky="ew")
 
@@ -147,6 +150,7 @@ def main():
         nav_buttons[name].configure(fg_color=ui_component.COLORS.get("primary_light", "lightblue"), text_color=ui_component.COLORS["primary"])
         views[name].grid(row=0, column=1, sticky="nsew", padx=30, pady=30)
 
+    # Прявязка событий к кнопкам
     nav_buttons["single"].configure(command=lambda: select_frame_by_name("single"))
     nav_buttons["multi"].configure(command=lambda: select_frame_by_name("multi"))
     nav_buttons["originals"].configure(command=lambda: select_frame_by_name("originals"))

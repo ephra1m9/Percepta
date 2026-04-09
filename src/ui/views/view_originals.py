@@ -10,6 +10,7 @@ import src.ui.ui_components as ui_component
 from src.utils import get_image_files
 from src.scanner import find_originals
 
+
 def create_originals_view(parent, app_state, show_error_callback):
     view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
     
@@ -143,6 +144,7 @@ def create_originals_view(parent, app_state, show_error_callback):
             lbl_low.configure(text=os.path.basename(folder) or folder, text_color=ui_component.COLORS['text_main'])
             check_ready()
 
+
     def select_server():
         folder = filedialog.askdirectory()
         if folder:
@@ -150,11 +152,13 @@ def create_originals_view(parent, app_state, show_error_callback):
             lbl_server.configure(text=os.path.basename(folder) or folder, text_color=ui_component.COLORS['text_main'])
             check_ready()
 
+
     def check_ready():
         if state["target_low"] and state["target_server"]:
             lbl_status.configure(text="Готово к сканированию", text_color=ui_component.COLORS["primary"])
         else:
             lbl_status.configure(text="Выберите папки для начала", text_color=ui_component.COLORS["text_muted"])
+
 
     def render_results(results, total_low):
         for widget in results_scroll.winfo_children():
@@ -190,6 +194,7 @@ def create_originals_view(parent, app_state, show_error_callback):
                 ctk.CTkLabel(group_frame, text=f"❌ {nf_name} (Не найден)", font=ui_component.FONTS['main'], text_color=ui_component.COLORS["error"]).pack(anchor="w", padx=15, pady=(10, 10))
 
         switch_view("results")
+
 
     def process_replace():
         if not state["found_files"]: return
@@ -227,6 +232,7 @@ def create_originals_view(parent, app_state, show_error_callback):
 
 
     def process_copy():
+        """Копирует найденные оригиналы"""
         if not state["found_files"]: return
         
         try:
@@ -263,6 +269,7 @@ def create_originals_view(parent, app_state, show_error_callback):
 
 
     def process_copy_report():
+        """Копирует найденные оригиналы в отдельную папку и создает текстовый отчет"""
         if not state["found_files"]: return
         
         try:
@@ -306,7 +313,9 @@ def create_originals_view(parent, app_state, show_error_callback):
         except Exception as e:
             show_error_callback(f"Ошибка при копировании:\n{e}")
 
+
     def run_scan(low_folder, server_folder, tolerance):
+        """Запускает поиск оригиналов"""
         try:
             low_files = get_image_files(low_folder)
             if not low_files:

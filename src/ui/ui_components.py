@@ -140,10 +140,10 @@ def result_action_btn(parent, btn_text: str, desc_text: str, icon_name):
 
 
 def hr_grid(view, row, pady=20):
-    """Горизонтальная линия (hr) в grid."""
+    """Горизонтальная линия (hr) в grid"""
     ctk.CTkFrame(view, height=2, fg_color=COLORS["border"]).grid(row=row, column=0, sticky="ew", pady=pady)
 
 
 def hr_pack(view, pady=20):
-    """Горизонтальная линия (hr) в pack."""
+    """Горизонтальная линия (hr) в pack"""
     ctk.CTkFrame(view, height=2, fg_color=COLORS["border"]).pack(fill="x", pady=pady)

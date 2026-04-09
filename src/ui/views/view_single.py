@@ -179,7 +179,7 @@ def create_single_folder_view(parent, app_state, show_error_callback):
     def run_scan(folder, tolerance):
         """Запускает поиск дубликатов"""
         try:
-            files = get_image_files(folder, recursive=False)
+            files = get_image_files(folder, recursive=app_state.get("search_recursive", False))
             if not files: 
                 view.after(0, lambda: show_message("Изображения не найдены"))
                 return view.after(2000, lambda: switch_view("setup"))

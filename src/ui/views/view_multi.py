@@ -222,9 +222,10 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
 
     def run_scan(ref_folder, search_folders, tolerance):
         try:
-            ref_files = get_image_files(ref_folder)
+            ref_files = get_image_files(ref_folder, recursive=app_state.get("search_recursive", False))
             search_files = []
-            for folder in search_folders: search_files.extend(get_image_files(folder))
+            for folder in search_folders:
+                search_files.extend(get_image_files(folder, recursive=app_state.get("search_recursive", False)))
 
             if not ref_files or not search_files: 
                 view.after(0, lambda: show_message("Папки пусты"))

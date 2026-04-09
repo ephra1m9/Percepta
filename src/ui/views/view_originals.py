@@ -317,20 +317,20 @@ def create_originals_view(parent, app_state, show_error_callback):
             show_error_callback(f"Ошибка при копировании:\n{e}")
 
 
-    def run_scan(low_folder, server_folder, tolerance):
+    def run_scan(low_folder, sources_folder, tolerance):
         """Запускает поиск оригиналов"""
         try:
             low_files = get_image_files(low_folder)
             if not low_files:
-                view.after(0, lambda: show_message("В папке с превью пусто"))
+                view.after(0, lambda: show_message("В исходной папке пусто"))
                 return view.after(2000, lambda: switch_view("setup"))
 
-            server_files = get_image_files(server_folder)
-            if not server_files:
-                view.after(0, lambda: show_message("В папке сервера пусто"))
+            sources_files = get_image_files(sources_folder)
+            if not sources_files:
+                view.after(0, lambda: show_message("В папке с оригиналами пусто"))
                 return view.after(2000, lambda: switch_view("setup"))
 
-            results = find_originals(low_files, server_files, tolerance)
+            results = find_originals(low_files, sources_files, tolerance)
             
             state["found_files"] = results['found']
             view.after(0, lambda: render_results(results, len(low_files)))

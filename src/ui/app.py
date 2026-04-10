@@ -99,8 +99,8 @@ def main():
     ctk.CTkLabel(sidebar_frame, text="Percepta", font=ui_component.FONTS['title'], text_color=ui_component.COLORS["primary"]).grid(row=0, column=0, pady=(40, 40))
 
     # Иконки
-    icon_single = create_font_icon("\uF42A", icon_path, size=16, color="#333333")
-    icon_multi = create_font_icon("\uF42B", icon_path, size=16, color="#333333")
+    icon_single = create_font_icon("\uF42B", icon_path, size=16, color="#333333")
+    icon_multi = create_font_icon("\uF2D1", icon_path, size=16, color="#333333")
     icon_originals = create_font_icon("\uF787", icon_path, size=16, color="#333333")
     icon_settings = create_font_icon("\uF3E5", icon_path, size=16, color="#333333")
 

@@ -49,16 +49,16 @@ def create_originals_view(parent, app_state, show_error_callback):
 
     frame_low = ctk.CTkFrame(setup_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border'], corner_radius=10)
     frame_low.grid(row=2, column=0, sticky="ew", pady=(20, 10))
-    btn_low = ctk.CTkButton(frame_low, text="Папка на ретушь", image=icon_folder, font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
+    btn_low = ctk.CTkButton(frame_low, text="Папка с изображениями", image=icon_folder, font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
     btn_low.pack(side="left", padx=10, pady=10)
-    lbl_low = ctk.CTkLabel(frame_low, text="Сжатые картинки от куратора", text_color=ui_component.COLORS["text_muted"], font=ui_component.FONTS['second'], anchor="e")
+    lbl_low = ctk.CTkLabel(frame_low, text="Сжатые или битые изображения", text_color=ui_component.COLORS["text_muted"], font=ui_component.FONTS['second'], anchor="e")
     lbl_low.pack(side="left", padx=10, pady=10, fill="x", expand=True) 
 
     frame_server = ctk.CTkFrame(setup_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border'], corner_radius=10)
     frame_server.grid(row=3, column=0, sticky="ew", pady=(0, 20))
     btn_server = ctk.CTkButton(frame_server, text="Папка с исходниками", image=icon_folder, font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
     btn_server.pack(side="left", padx=10, pady=10)
-    lbl_server = ctk.CTkLabel(frame_server, text="Архив / исходники сервера", text_color=ui_component.COLORS["text_muted"], font=ui_component.FONTS['second'], anchor="e")
+    lbl_server = ctk.CTkLabel(frame_server, text="Изображения в лучшем качестве", text_color=ui_component.COLORS["text_muted"], font=ui_component.FONTS['second'], anchor="e")
     lbl_server.pack(side="left", padx=10, pady=10, fill="x", expand=True)
 
     btn_start = ctk.CTkButton(setup_frame, image=icon_search, text="Найти оригиналы", font=ui_component.FONTS['main'], **ui_component.BUTTON_PRIMARY)

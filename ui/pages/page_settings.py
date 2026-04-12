@@ -1,6 +1,6 @@
 import customtkinter as ctk
 
-import src.ui.ui_components as ui_component
+import ui.ui_components as ui_component
 
 
 def create_settings_view(parent, app_state, show_error_callback=None):
@@ -14,8 +14,6 @@ def create_settings_view(parent, app_state, show_error_callback=None):
     content.grid_columnconfigure(0, weight=1)
 
     ui_component.title(content, "Настройки программы")
-
-    # ui_component.subtitle(content, "Общие настройки")
 
     # Настройки чувствительности алгоритма
     def update_tolerance(value):

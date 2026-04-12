@@ -8,15 +8,15 @@ import logging
 from tkinter import filedialog
 from PIL import Image
 
-import src.ui.ui_components as ui_component
-from src.utils import get_image_files
-from src.scanner import get_image_data, are_images_matching, compare_histograms, find_reference_matches
+import ui.ui_components as ui_component
+from utils.utils import get_image_files
+from utils.scanner import get_image_data, are_images_matching, compare_histograms, find_reference_matches
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
 
 
-def create_multi_folder_view(parent, app_state, show_error_callback):
+def create_reference_view(parent, app_state, show_error_callback):
     view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
     
     content = ctk.CTkFrame(view, fg_color="transparent")
@@ -301,7 +301,7 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
                         
                         r_data = ref_data_map[r_path]
                         
-                        # МАГИЯ: Сравниваем точки (хватает 10 совпадений, так как имена уже похожи)
+                        # Сравниваем точки
                         match_result = are_images_matching(
                             s_data['descriptors'],
                             r_data['descriptors'],
@@ -319,12 +319,9 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
 
             logger.info(f"ШАГ 1 завершен: совпадений по именам={name_matches}, ORB совпадений={orb_matches}")
 
-            # ШАГ 2: Используем улучшенный алгоритм поиска по эталону для всех файлов
-            # Это заменит сложную логику и будет искать даже переименованные/отретушированные изображения
+            # ШАГ 2: Используем алгоритм поиска по эталону для всех файлов
             logger.info(f"ШАГ 2: Запуск улучшенного поиска по эталону")
             
-            # Используем новую функцию find_reference_matches с увеличенным tolerance
-            # для лучшего обнаружения ретушированных изображений
             enhanced_tolerance = min(30, tolerance + 5)
             reference_matches = find_reference_matches(ref_files, search_files, tolerance=enhanced_tolerance)
             
@@ -343,7 +340,6 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
                 view.after(0, lambda: show_message("Совпадений не найдено"))
                 view.after(2000, lambda: switch_view("setup"))
             else:
-                # Группируем результаты по эталонному файлу
                 grouped_results = {}
                 for ref_path, search_path in target_duplicates:
                     if ref_path not in grouped_results:
@@ -351,7 +347,6 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
                     if search_path not in grouped_results[ref_path]:
                         grouped_results[ref_path].append(search_path)
                 
-                # Преобразуем словарь в список списков
                 final_groups = list(grouped_results.values())
                 
                 state["found_groups"] = final_groups
@@ -372,8 +367,6 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
     btn_clear.configure(command=clear_folders)
     btn_back.configure(command=lambda: switch_view("setup"))
     btn_start.configure(command=lambda: (btn_start.configure(state="disabled"), show_message("Анализ файлов..."), threading.Thread(target=run_scan, args=(state["reference_folder"], list(state["target_folders"]), app_state["tolerance"])).start()))
-    # btn_copy.configure(command=lambda: process_duplicates("copy"))
-    # btn_delete.configure(command=lambda: process_duplicates("delete"))
 
     update_list()
     return view

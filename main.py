@@ -8,7 +8,7 @@ except Exception:
     except Exception:
         pass
 
-from src.ui.app import main as run_app
+from ui.app import main as run_app
 
 
 if __name__ == '__main__':

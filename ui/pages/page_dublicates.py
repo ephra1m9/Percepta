@@ -6,12 +6,12 @@ import customtkinter as ctk
 from tkinter import filedialog
 from PIL import Image
 
-import src.ui.ui_components as ui_component
-from src.utils import get_image_files
-from src.scanner import find_duplicates
+import ui.ui_components as ui_component
+from utils.utils import get_image_files
+from utils.scanner import find_duplicates
 
 
-def create_single_folder_view(parent, app_state, show_error_callback):    
+def create_dublicates_view(parent, app_state, show_error_callback):    
     view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
     
     content = ctk.CTkFrame(view, fg_color="transparent")

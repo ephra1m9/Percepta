@@ -6,9 +6,9 @@ import customtkinter as ctk
 
 from tkinter import filedialog
 
-import src.ui.ui_components as ui_component
-from src.utils import get_image_files
-from src.scanner import find_originals
+import ui.ui_components as ui_component
+from utils.utils import get_image_files
+from utils.scanner import find_originals
 
 
 def create_originals_view(parent, app_state, show_error_callback):

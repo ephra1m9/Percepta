@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 orb = cv2.ORB_create(nfeatures=800)
 bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
 
+
 def get_hashes_with_rotations(img):
     """Быстрый глобальный хеш"""
     return [
@@ -23,6 +24,7 @@ def get_hashes_with_rotations(img):
         imagehash.phash(img.rotate(180, expand=True)),
         imagehash.phash(img.rotate(270, expand=True))
     ]
+
 
 def get_image_data(path):
     """Оптимизированное чтение: ресайз до 500px перед анализом точек"""
@@ -37,7 +39,7 @@ def get_image_data(path):
             doc = fitz.open(path)
             for page_num in range(len(doc)):
                 page = doc.load_page(page_num)
-                pix = page.get_pixmap(dpi=72) # Низкий DPI для скорости поиска
+                pix = page.get_pixmap(dpi=72)
                 img_pil = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
                 results.append(process_image_logic(img_pil, path, file_size, page_num + 1))
             doc.close()
@@ -58,7 +60,6 @@ def find_reference_matches(reference_paths, search_paths, tolerance=15):
     """
     logger.info(f"Улучшенный поиск по эталону: {len(reference_paths)} эталонов, {len(search_paths)} для поиска")
     
-    # Кэшируем данные для всех файлов
     data_cache = {}
     all_paths = reference_paths + search_paths
     
@@ -75,7 +76,7 @@ def find_reference_matches(reference_paths, search_paths, tolerance=15):
     matched_search = set()
     
     # Увеличиваем порог pHash для ретушированных изображений
-    phash_tolerance = tolerance  # Увеличили с tolerance//3 до tolerance
+    phash_tolerance = tolerance
     histogram_threshold = 0.70
     
     logger.info(f"Параметры поиска: pHash tolerance={phash_tolerance}, histogram threshold={histogram_threshold}")
@@ -117,7 +118,6 @@ def find_reference_matches(reference_paths, search_paths, tolerance=15):
                 des2 = search_data['descriptors']
                 
                 if des1 is not None and des2 is not None and len(des1) > 10 and len(des2) > 10:
-                    # Мягкие параметры для кадрированных изображений
                     min_des_len = min(len(des1), len(des2))
                     dynamic_min_matches = max(10, int(min_des_len * 0.15))
                     
@@ -131,7 +131,6 @@ def find_reference_matches(reference_paths, search_paths, tolerance=15):
                     if orb_match:
                         logger.debug(f"ORB совпадение: {os.path.basename(ref_data['path'])} <-> {os.path.basename(search_data['path'])}")
             
-            # Если хотя бы один метод показал совпадение
             if phash_match or hist_match or orb_match:
                 matches.append([ref_data['path'], search_data['path']])
                 matched_search.add(search_key)
@@ -140,12 +139,12 @@ def find_reference_matches(reference_paths, search_paths, tolerance=15):
     logger.info(f"Найдено {len(matches)} совпадений по эталону")
     return matches
 
+
 def process_image_logic(img_pil, path, file_size, page_num):
-    """Ядро анализа: делаем превью 800px для OpenCV + гистограммы"""
-    # 1. pHash (делаем на оригинальном превью)
+    """Ядро анализа: делает превью 800px для OpenCV + гистограммы"""
     hashes = get_hashes_with_rotations(img_pil)
     
-    # 2. Цветовые гистограммы (HSV)
+    # Цветовые гистограммы (HSV)
     img_hsv = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2HSV)
     hist_h = cv2.calcHist([img_hsv], [0], None, [16], [0, 180])
     hist_s = cv2.calcHist([img_hsv], [1], None, [16], [0, 256])
@@ -155,7 +154,7 @@ def process_image_logic(img_pil, path, file_size, page_num):
     cv2.normalize(hist_v, hist_v)
     histograms = (hist_h, hist_s, hist_v)
     
-    # 3. OpenCV (делаем на увеличенной копии для лучшего детектирования)
+    # OpenCV (делаем на увеличенной копии для лучшего детектирования)
     img_mini = img_pil.copy()
     img_mini.thumbnail((800, 800))
     img_cv = cv2.cvtColor(np.array(img_mini), cv2.COLOR_RGB2GRAY)
@@ -171,6 +170,7 @@ def process_image_logic(img_pil, path, file_size, page_num):
         'size': file_size,
         'page': page_num
     }
+
 
 def compare_histograms(hist1, hist2):
     """Сравнение гистограмм HSV (возвращает схожесть 0-1)"""
@@ -191,6 +191,7 @@ def compare_histograms(hist1, hist2):
         return similarity
     except:
         return 0.0
+
 
 def are_images_matching(des1, des2, min_matches=None, lowe_ratio=0.65, ratio_threshold=0.25, debug_info=None):
     """Улучшенное сравнение с динамическим min_matches"""
@@ -231,8 +232,9 @@ def are_images_matching(des1, des2, min_matches=None, lowe_ratio=0.65, ratio_thr
             logger.debug(f"ORB сравнение ошибка: {e}")
         return False
 
+
 def find_duplicates(image_paths, tolerance=15):
-    """Поиск дубликатов СТРОГО по pHash"""
+    """Поиск дубликатов строго по pHash"""
     phash_tolerance = max(1, tolerance // 3)
     logger.info(f"Поиск дубликатов: {len(image_paths)} файлов, pHash tolerance={phash_tolerance}")
     
@@ -257,7 +259,7 @@ def find_duplicates(image_paths, tolerance=15):
             if k2 in visited: continue
             total_comparisons += 1
             
-            # Сравниваем ТОЛЬКО хеши (быстро и точно для дубликатов)
+            # Сравниваем хеши
             min_hash_diff = 100
             for h1 in data_cache[k1]['hashes']:
                 for h2 in data_cache[k2]['hashes']:
@@ -278,6 +280,7 @@ def find_duplicates(image_paths, tolerance=15):
     logger.info(f"Итог: {len(groups)} групп, {matches_found} совпадений из {total_comparisons} сравнений")
     return groups
 
+
 def find_originals(low_res_paths, high_res_paths, tolerance=20, phash_threshold=None, quality_ratio=None):
     """Поиск оригиналов: гибридный подход pHash + ORB + проверка качества"""
     results = {'found': [], 'not_found': []}
@@ -295,11 +298,11 @@ def find_originals(low_res_paths, high_res_paths, tolerance=20, phash_threshold=
     
     # Настраиваемые параметры (значения по умолчанию)
     if phash_threshold is None:
-        phash_threshold = 10  # Максимальная разница pHash (0-64)
+        phash_threshold = 10
     if quality_ratio is None:
-        quality_ratio = 1.2  # Оригинал должен быть минимум на 20% лучше
+        quality_ratio = 1.2
     
-    orb_min_matches = max(25, tolerance)  # Минимум совпадений ORB
+    orb_min_matches = max(25, tolerance)
     
     # Предварительная обработка high-res файлов для быстрого поиска по имени
     high_res_map = {}

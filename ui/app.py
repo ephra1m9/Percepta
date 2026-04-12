@@ -3,12 +3,12 @@ import customtkinter as ctk
 
 from PIL import Image, ImageFont, ImageDraw
 
-import src.ui.ui_components as ui_component
-from src.config import VERSION
-from src.ui.views.view_single import create_single_folder_view
-from src.ui.views.view_multi import create_multi_folder_view
-from src.ui.views.view_originals import create_originals_view
-from src.ui.views.view_settings import create_settings_view
+import ui.ui_components as ui_component
+from utils.config import VERSION
+from .pages.page_dublicates import create_dublicates_view
+from .pages.page_reference import create_reference_view
+from .pages.page_originals import create_originals_view
+from .pages.page_settings import create_settings_view
 
 
 ctk.set_appearance_mode("Light") 
@@ -18,7 +18,7 @@ ctk.set_default_color_theme("blue")
 def load_fonts():
     """Загружает шрифты"""
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    fonts_dir = os.path.join(current_dir, "..", "..", "assets", "fonts")
+    fonts_dir = os.path.join(current_dir, "..", "assets", "fonts")
 
     try:
         ctk.FontManager.load_font(os.path.join(fonts_dir, "Rubik-Light.ttf"))
@@ -137,8 +137,8 @@ def main():
 
     # --- ИНИЦИАЛИЗАЦИЯ ЭКРАНОВ ---
     views = {
-        "single": create_single_folder_view(root, app_state, error_callback),
-        "multi": create_multi_folder_view(root, app_state, error_callback),
+        "single": create_dublicates_view(root, app_state, error_callback),
+        "multi": create_reference_view(root, app_state, error_callback),
         "originals": create_originals_view(root, app_state, error_callback),
         "settings": create_settings_view(root, app_state, error_callback)
     }
@@ -163,6 +163,7 @@ def main():
 
     select_frame_by_name("single") 
     root.mainloop()
+
 
 if __name__ == "__main__":
     main()

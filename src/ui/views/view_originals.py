@@ -330,7 +330,17 @@ def create_originals_view(parent, app_state, show_error_callback):
                 view.after(0, lambda: show_message("В папке с оригиналами пусто"))
                 return view.after(2000, lambda: switch_view("setup"))
 
-            results = find_originals(low_files, sources_files, tolerance)
+            # Получаем дополнительные параметры из app_state
+            phash_threshold = app_state.get('phash_threshold', 10)
+            quality_ratio = app_state.get('quality_ratio', 1.2)
+            
+            results = find_originals(
+                low_files,
+                sources_files,
+                tolerance=tolerance,
+                phash_threshold=phash_threshold,
+                quality_ratio=quality_ratio
+            )
             
             state["found_files"] = results['found']
             view.after(0, lambda: render_results(results, len(low_files)))

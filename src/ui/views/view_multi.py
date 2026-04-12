@@ -9,7 +9,7 @@ from PIL import Image
 
 import src.ui.ui_components as ui_component
 from src.utils import get_image_files
-from src.scanner import find_duplicates, get_image_data
+from src.scanner import find_duplicates, get_image_data, are_images_matching
 
 
 def create_multi_folder_view(parent, app_state, show_error_callback):
@@ -235,58 +235,51 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
                 view.after(2000, lambda: switch_view("setup"))
                 return
 
-            # --- ГИБРИДНЫЙ ПОИСК ---
-            # 1. Индексируем эталонные файлы по имени
+            def clean_filename(filename):
+                stem = os.path.splitext(os.path.basename(filename))[0].lower().strip()
+                return re.sub(r'(_original|_edit|_retouch|-copy|\(\d+\))$', '', stem).strip()
+
             ref_by_name = {}
             for p in ref_files:
-                stem = os.path.splitext(os.path.basename(p))[0].lower().strip()
+                stem = clean_filename(p)
                 if stem not in ref_by_name: ref_by_name[stem] = []
                 ref_by_name[stem].append(p)
 
             target_duplicates = []
             matched_searches = set()
             matched_refs = set()
+            ref_data_map = {}
+            relaxed_tolerance = max(8, tolerance - 5)
 
-            # 2. ШАГ 1: Поиск по именам (с мягкой визуальной проверкой)
-            # Если имя совпало, мы удваиваем tolerance, так как уверены в совпадении
-            relaxed_tolerance = tolerance + 15 
-            
-            # Подготовим данные эталонов для быстрой проверки
-            ref_data_map = {} 
-
+            # ШАГ 1: Поиск с использованием имен
             for s_path in search_files:
-                s_stem = os.path.splitext(os.path.basename(s_path))[0].lower().strip()
+                s_stem = clean_filename(s_path)
                 
                 if s_stem in ref_by_name:
-                    s_data = get_image_data(s_path)[0] # Берем данные рабочего файла
+                    s_data_list = get_image_data(s_path)
+                    if not s_data_list: continue
+                    s_data = s_data_list[0]
                     
                     for r_path in ref_by_name[s_stem]:
                         if r_path not in ref_data_map:
-                            ref_data_map[r_path] = get_image_data(r_path)[0]
+                            r_data_list = get_image_data(r_path)
+                            if not r_data_list: continue
+                            ref_data_map[r_path] = r_data_list[0]
                         
                         r_data = ref_data_map[r_path]
                         
-                        # Проверяем визуально, но с большим допуском
-                        is_match = False
-                        for sh in s_data['hashes']:
-                            for rh in r_data['hashes']:
-                                if sh - rh <= relaxed_tolerance:
-                                    is_match = True
-                                    break
-                            if is_match: break
-                        
-                        if is_match:
+                        # МАГИЯ: Сравниваем точки (хватает 10 совпадений, так как имена уже похожи)
+                        if are_images_matching(s_data['descriptors'], r_data['descriptors'], min_matches=relaxed_tolerance):
                             target_duplicates.append([r_path, s_path])
                             matched_searches.add(s_path)
                             matched_refs.add(r_path)
                             break
 
-            # 3. ШАГ 2: Поиск тех, кто переименован (стандартный визуальный поиск)
+            # ШАГ 2: Слепой поиск остатков
             remaining_searches = [p for p in search_files if p not in matched_searches]
             remaining_refs = [p for p in ref_files if p not in matched_refs]
 
             if remaining_searches and remaining_refs:
-                # Используем стандартный find_duplicates для остатков
                 raw_visual = find_duplicates(remaining_refs + remaining_searches, tolerance)
                 
                 ref_path_norm = os.path.normpath(ref_folder)
@@ -295,10 +288,8 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
                 for group in raw_visual:
                     refs = [p for p in group if is_ref(p)]
                     searches = [p for p in group if not is_ref(p)]
-                    if refs and searches:
-                        target_duplicates.append(refs + searches)
+                    if refs and searches: target_duplicates.append(refs + searches)
 
-            # --- ВЫВОД РЕЗУЛЬТАТОВ ---
             if not target_duplicates:
                 view.after(0, lambda: show_message("Совпадений не найдено"))
                 view.after(2000, lambda: switch_view("setup"))

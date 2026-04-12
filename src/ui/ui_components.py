@@ -103,6 +103,11 @@ def title(view, text: str):
     return ctk.CTkLabel(view, text=text, font=FONTS['title']).grid(row=0, column=0, sticky="w", pady=(0, 20))
 
 
+def subtitle(view, text: str):
+    """Подзаголовок (второго уровня)"""
+    return ctk.CTkLabel(view, text=text, font=FONTS['main'], text_color=COLORS["text_main"]).pack(anchor="w", pady=(0, 10))
+
+
 def description(view, text: str):
     """Описание для функции программы"""
     desc_frame = ctk.CTkFrame(view, fg_color=COLORS["bg_input"], corner_radius=8)

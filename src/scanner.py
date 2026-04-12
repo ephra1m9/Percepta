@@ -1,12 +1,17 @@
 import os
-import imagehash
+import cv2
+import numpy as np
 import fitz
-
+import re
+import imagehash
 from PIL import Image
 
+# Инициализируем OpenCV с ограничением в 500 точек (хватит для ретуши)
+orb = cv2.ORB_create(nfeatures=500)
+bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
 
 def get_hashes_with_rotations(img):
-    """Возвращает список из 4 хешей: оригинал и 3 поворота (90, 180, 270 градусов)."""
+    """Быстрый глобальный хеш"""
     return [
         imagehash.phash(img),
         imagehash.phash(img.rotate(90, expand=True)),
@@ -14,195 +19,184 @@ def get_hashes_with_rotations(img):
         imagehash.phash(img.rotate(270, expand=True))
     ]
 
-
 def get_image_data(path):
-    """Извлекает данные. Сохраняет сразу 4 хэша (с учетом поворотов)."""
+    """Оптимизированное чтение: ресайз до 500px перед анализом точек"""
     results = []
     ext = os.path.splitext(path)[1].lower()
     
-    if ext == '.pdf':
-        try:
+    try: file_size = os.path.getsize(path)
+    except Exception: file_size = 0
+        
+    try:
+        if ext == '.pdf':
             doc = fitz.open(path)
             for page_num in range(len(doc)):
                 page = doc.load_page(page_num)
-                pix = page.get_pixmap(dpi=150)
-                
-                mode = "RGBA" if pix.alpha else "RGB"
-                img = Image.frombytes(mode, [pix.width, pix.height], pix.samples)
-                
-                results.append({
-                    'path': path,
-                    'hashes': get_hashes_with_rotations(img),
-                    'pixels': pix.width * pix.height,
-                    'page': page_num + 1 
-                })
+                pix = page.get_pixmap(dpi=72) # Низкий DPI для скорости поиска
+                img_pil = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                results.append(process_image_logic(img_pil, path, file_size, page_num + 1))
             doc.close()
-        except Exception:
-            pass
-    else:
-        try:
+        else:
             with Image.open(path) as img:
-                if img.mode in ('RGBA', 'P'):
-                    img = img.convert('RGB')
-                    
-                results.append({
-                    'path': path,
-                    'hashes': get_hashes_with_rotations(img),
-                    'pixels': img.width * img.height,
-                    'page': None
-                })
-        except Exception:
-            pass
-            
+                if img.mode in ('RGBA', 'P'): img = img.convert('RGB')
+                results.append(process_image_logic(img, path, file_size, None))
+    except Exception:
+        pass
     return results
 
+def process_image_logic(img_pil, path, file_size, page_num):
+    """Ядро анализа: делаем превью 500px для OpenCV, чтобы не греть CPU"""
+    # 1. pHash (делаем на оригинальном превью)
+    hashes = get_hashes_with_rotations(img_pil)
+    
+    # 2. OpenCV (делаем на ОЧЕНЬ маленькой копии)
+    img_mini = img_pil.copy()
+    img_mini.thumbnail((500, 500)) 
+    img_cv = cv2.cvtColor(np.array(img_mini), cv2.COLOR_RGB2GRAY)
+    
+    kp, des = orb.detectAndCompute(img_cv, None)
+    
+    return {
+        'path': path,
+        'hashes': hashes,
+        'descriptors': des,
+        'pixels': img_pil.width * img_pil.height,
+        'size': file_size,
+        'page': page_num
+    }
 
-def find_duplicates(image_paths, tolerance=5):
-    """Ищет дубликаты изображений"""
-    hashes_dict = {}
+def are_images_matching(des1, des2, min_matches=25, lowe_ratio=0.65):
+    """Улучшенное сравнение с более строгими параметрами"""
+    if des1 is None or des2 is None or len(des1) < 15 or len(des2) < 15:
+        return False
+    try:
+        matches = bf.knnMatch(des1, des2, k=2)
+        # Более строгий коэффициент Лоу (0.65 вместо 0.7)
+        good_matches = []
+        for m_n in matches:
+            if len(m_n) == 2:
+                m, n = m_n
+                if m.distance < lowe_ratio * n.distance:
+                    good_matches.append(m)
+        
+        # Дополнительная проверка: минимум 30% matches от минимального количества дескрипторов
+        min_descriptors = min(len(des1), len(des2))
+        ratio_ok = len(good_matches) >= min_descriptors * 0.3
+        
+        return len(good_matches) >= min_matches and ratio_ok
+    except:
+        return False
+
+def find_duplicates(image_paths, tolerance=15):
+    """Поиск дубликатов СТРОГО по pHash (как и должно быть)"""
+    phash_tolerance = max(1, tolerance // 3)
+    data_cache = {}
     
     for path in image_paths:
-        data_list = get_image_data(path)
-        for data in data_list:
-            key = f"{data['path']} (Стр. {data['page']})" if data['page'] else data['path']
-            hashes_dict[key] = data['hashes']
+        for data in get_image_data(path):
+            key = f"{data['path']}_{data['page']}"
+            data_cache[key] = data
 
-    duplicates_groups = []
+    groups = []
     visited = set()
-    valid_keys = list(hashes_dict.keys())
+    keys = list(data_cache.keys())
     
-    for i in range(len(valid_keys)):
-        key1 = valid_keys[i]
-        if key1 in visited: continue
-            
-        current_group = [key1]
-        hashes1 = hashes_dict[key1]
-        
-        for j in range(i + 1, len(valid_keys)):
-            key2 = valid_keys[j]
-            if key2 in visited: continue
-                
-            hashes2 = hashes_dict[key2]
-            
-            is_match = False
-            for h1 in hashes1:
-                for h2 in hashes2:
-                    if h1 - h2 <= tolerance:
-                        is_match = True
-                        break
-                if is_match: break
-            
-            if is_match:
-                current_group.append(key2)
-                visited.add(key2)
-        
-        if len(current_group) > 1:
-            duplicates_groups.append(current_group)
-            
-    return duplicates_groups
+    for i, k1 in enumerate(keys):
+        if k1 in visited: continue
+        group = [data_cache[k1]['path']]
+        for k2 in keys[i+1:]:
+            if k2 in visited: continue
+            # Сравниваем ТОЛЬКО хеши (быстро и точно для дубликатов)
+            if any(h1 - h2 <= phash_tolerance for h1 in data_cache[k1]['hashes'] for h2 in data_cache[k2]['hashes']):
+                group.append(data_cache[k2]['path'])
+                visited.add(k2)
+        if len(group) > 1: groups.append(group)
+    return groups
 
-
-def find_originals(low_res_paths, high_res_paths, tolerance=5):
-    """Ищет оригиналы изображений"""
+def find_originals(low_res_paths, high_res_paths, tolerance=20, phash_threshold=None, quality_ratio=None):
+    """Поиск оригиналов: гибридный подход pHash + ORB + проверка качества"""
     results = {'found': [], 'not_found': []}
-    high_res_by_name = {}
-
-    for p in high_res_paths:
-        stem = os.path.splitext(os.path.basename(p))[0].lower().strip()
-
-        if stem not in high_res_by_name:
-            high_res_by_name[stem] = []
-
-        high_res_by_name[stem].append(p)
-
-    high_res_data_cache = {}
     
-    def get_cached_image_data(path):
-        """Возвращает кэшированные данные изображения, вычисляя при необходимости."""
-        if path not in high_res_data_cache:
-            high_res_data_cache[path] = get_image_data(path)
-        return high_res_data_cache[path]
+    def clean_name(p):
+        return re.sub(r'(_original|_edit|_retouch|-copy|\(\d+\))$', '',
+                      os.path.splitext(os.path.basename(p))[0].lower()).strip()
 
-    unmatched_low_files = []
+    # Кэширование данных изображений
+    cache = {}
+    def get_cached(p):
+        if p not in cache:
+            cache[p] = get_image_data(p)
+        return cache[p]
+    
+    # Настраиваемые параметры (значения по умолчанию)
+    if phash_threshold is None:
+        phash_threshold = 10  # Максимальная разница pHash (0-64)
+    if quality_ratio is None:
+        quality_ratio = 1.2  # Оригинал должен быть минимум на 20% лучше
+    
+    orb_min_matches = max(25, tolerance)  # Минимум совпадений ORB
+    
+    # Предварительная обработка high-res файлов для быстрого поиска по имени
+    high_res_map = {}
+    for p in high_res_paths:
+        name = clean_name(p)
+        if name not in high_res_map:
+            high_res_map[name] = []
+        high_res_map[name].append(p)
 
-    # Этап 1 (поиск по имени)
-    for low_path in low_res_paths:
-        low_data_list = get_image_data(low_path)
-
-        if not low_data_list:
-            results['not_found'].append(low_path)
+    for lp in low_res_paths:
+        l_data_list = get_cached(lp)
+        if not l_data_list:
+            results['not_found'].append(lp)
             continue
-
-        for low_data in low_data_list:
-            low_hashes = low_data['hashes']
-            stem = os.path.splitext(os.path.basename(low_path))[0].lower().strip()
-
-            verified_match_path = None
-            verified_match_page = None
-            best_score = -1
-
-            if stem in high_res_by_name:
-                for match_path in high_res_by_name[stem]:
-                    match_data = get_cached_image_data(match_path)
-
-                    for m_data in match_data:
-                        is_match = False
-
-                        for lh in low_hashes:
-                            for mh in m_data['hashes']:
-                                if lh - mh <= tolerance:
-                                    is_match = True
-                                    break
-
-                            if is_match: break
-
-                        if is_match:
-                            current_score = m_data['pixels']
-
-                            if current_score > best_score:
-                                best_score = current_score
-                                verified_match_path = m_data['path']
-                                verified_match_page = m_data['page']
-
-            if verified_match_path:
-                results['found'].append((low_path, verified_match_path, verified_match_page))
+            
+        l_data = l_data_list[0]
+        found = False
+        name = clean_name(lp)
+        
+        # Список кандидатов для проверки (приоритет: совпадение по имени)
+        candidates = []
+        if name in high_res_map:
+            candidates.extend(high_res_map[name])
+        
+        # Добавляем остальные файлы если не нашли по имени
+        if not candidates:
+            candidates = high_res_paths
+        
+        for hp in candidates:
+            for h_data in get_cached(hp):
+                # Шаг 1: Быстрая фильтрация по pHash
+                phash_match = any(
+                    h1 - h2 <= phash_threshold
+                    for h1 in l_data['hashes']
+                    for h2 in h_data['hashes']
+                )
+                
+                if not phash_match:
+                    continue
+                
+                # Шаг 2: Более точная проверка ORB
+                if not are_images_matching(
+                    l_data['descriptors'],
+                    h_data['descriptors'],
+                    min_matches=orb_min_matches
+                ):
+                    continue
+                
+                # Шаг 3: Проверка что оригинал действительно лучше
+                # Проверяем по размеру файла ИЛИ по разрешению
+                size_ok = h_data['size'] >= l_data['size'] * quality_ratio
+                resolution_ok = h_data['pixels'] >= l_data['pixels'] * quality_ratio
+                
+                if size_ok or resolution_ok:
+                    results['found'].append((lp, h_data['path'], h_data['page']))
+                    found = True
+                    break
+            
+            if found:
                 break
-            else:
-                unmatched_low_files.append((low_path, low_hashes))
-
-    # Этап 2 (визуальный поиск)
-    if unmatched_low_files:
-        high_res_data = []
-        for path in high_res_paths:
-            high_res_data.extend(get_cached_image_data(path))
-
-        for low_path, low_hashes in unmatched_low_files:
-            best_match_path = None
-            best_match_page = None
-            best_score = -1
-
-            for hr_data in high_res_data:
-                is_match = False
-
-                for lh in low_hashes:
-                    for hr_h in hr_data['hashes']:
-                        if lh - hr_h <= tolerance:
-                            is_match = True
-                            break
-
-                    if is_match: break
-
-                if is_match:
-                    current_score = hr_data['pixels']
-
-                    if current_score > best_score:
-                        best_score = current_score
-                        best_match_path = hr_data['path']
-                        best_match_page = hr_data['page']
-
-            if best_match_path:
-                results['found'].append((low_path, best_match_path, best_match_page))
-            else:
-                results['not_found'].append(low_path)
-
+        
+        if not found:
+            results['not_found'].append(lp)
+    
     return results

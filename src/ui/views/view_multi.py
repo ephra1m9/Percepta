@@ -3,13 +3,17 @@ import re
 import threading
 import shutil
 import customtkinter as ctk
+import logging
 
 from tkinter import filedialog
 from PIL import Image
 
 import src.ui.ui_components as ui_component
 from src.utils import get_image_files
-from src.scanner import find_duplicates, get_image_data, are_images_matching
+from src.scanner import find_duplicates, get_image_data, are_images_matching, compare_histograms, find_reference_matches
+
+# Настройка логирования
+logger = logging.getLogger(__name__)
 
 
 def create_multi_folder_view(parent, app_state, show_error_callback):
@@ -223,14 +227,22 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
 
     def run_scan(ref_folder, search_folders, tolerance):
         try:
+            logger.info(f"=== НАЧАЛО СКАНИРОВАНИЯ ===")
+            logger.info(f"Эталонная папка: {ref_folder} ({len(search_folders)} папок для поиска)")
+            logger.info(f"Толерантность: {tolerance}")
+            
             is_recursive = app_state.get("search_recursive", False)
             ref_files = get_image_files(ref_folder, recursive=is_recursive)
             
             search_files = []
-            for folder in search_folders: 
+            for folder in search_folders:
                 search_files.extend(get_image_files(folder, recursive=is_recursive))
 
-            if not ref_files or not search_files: 
+            logger.info(f"Найдено эталонных файлов: {len(ref_files)}")
+            logger.info(f"Найдено файлов для поиска: {len(search_files)}")
+
+            if not ref_files or not search_files:
+                logger.warning("Папки пусты")
                 view.after(0, lambda: show_message("Папки пусты"))
                 view.after(2000, lambda: switch_view("setup"))
                 return
@@ -250,12 +262,17 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
             matched_refs = set()
             ref_data_map = {}
             relaxed_tolerance = max(8, tolerance - 5)
+            
+            logger.info(f"ШАГ 1: Поиск по именам (relaxed_tolerance={relaxed_tolerance})")
 
             # ШАГ 1: Поиск с использованием имен
+            name_matches = 0
+            orb_matches = 0
             for s_path in search_files:
                 s_stem = clean_filename(s_path)
                 
                 if s_stem in ref_by_name:
+                    name_matches += 1
                     s_data_list = get_image_data(s_path)
                     if not s_data_list: continue
                     s_data = s_data_list[0]
@@ -269,35 +286,62 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
                         r_data = ref_data_map[r_path]
                         
                         # МАГИЯ: Сравниваем точки (хватает 10 совпадений, так как имена уже похожи)
-                        if are_images_matching(s_data['descriptors'], r_data['descriptors'], min_matches=relaxed_tolerance):
+                        match_result = are_images_matching(
+                            s_data['descriptors'],
+                            r_data['descriptors'],
+                            min_matches=relaxed_tolerance,
+                            debug_info=f"{os.path.basename(s_path)} <-> {os.path.basename(r_path)}"
+                        )
+                        if match_result:
                             target_duplicates.append([r_path, s_path])
                             matched_searches.add(s_path)
                             matched_refs.add(r_path)
+                            orb_matches += 1
+                            logger.info(f"Найдено совпадение по имени+ORB: {os.path.basename(r_path)} <-> {os.path.basename(s_path)}")
                             break
 
-            # ШАГ 2: Слепой поиск остатков
-            remaining_searches = [p for p in search_files if p not in matched_searches]
-            remaining_refs = [p for p in ref_files if p not in matched_refs]
+            logger.info(f"ШАГ 1 завершен: совпадений по именам={name_matches}, ORB совпадений={orb_matches}")
 
-            if remaining_searches and remaining_refs:
-                raw_visual = find_duplicates(remaining_refs + remaining_searches, tolerance)
-                
-                ref_path_norm = os.path.normpath(ref_folder)
-                def is_ref(path): return os.path.normpath(path).startswith(ref_path_norm)
+            # ШАГ 2: Используем улучшенный алгоритм поиска по эталону для всех файлов
+            # Это заменит сложную логику и будет искать даже переименованные/отретушированные изображения
+            logger.info(f"ШАГ 2: Запуск улучшенного поиска по эталону")
+            
+            # Используем новую функцию find_reference_matches с увеличенным tolerance
+            # для лучшего обнаружения ретушированных изображений
+            enhanced_tolerance = min(30, tolerance + 5)
+            reference_matches = find_reference_matches(ref_files, search_files, tolerance=enhanced_tolerance)
+            
+            # Добавляем найденные совпадения
+            for ref_path, search_path in reference_matches:
+                if search_path not in matched_searches and ref_path not in matched_refs:
+                    target_duplicates.append([ref_path, search_path])
+                    matched_searches.add(search_path)
+                    matched_refs.add(ref_path)
+            
+            logger.info(f"Улучшенный поиск нашел {len(reference_matches)} совпадений")
 
-                for group in raw_visual:
-                    refs = [p for p in group if is_ref(p)]
-                    searches = [p for p in group if not is_ref(p)]
-                    if refs and searches: target_duplicates.append(refs + searches)
-
+            logger.info(f"ИТОГО найдено совпадений: {len(target_duplicates)}")
+            
             if not target_duplicates:
+                logger.info("Совпадений не найдено")
                 view.after(0, lambda: show_message("Совпадений не найдено"))
                 view.after(2000, lambda: switch_view("setup"))
             else:
-                state["found_groups"] = target_duplicates
-                view.after(0, lambda: render_results(target_duplicates, len(ref_files + search_files)))
+                # Убираем дубликаты
+                unique_duplicates = []
+                seen = set()
+                for group in target_duplicates:
+                    key = tuple(sorted(group))
+                    if key not in seen:
+                        seen.add(key)
+                        unique_duplicates.append(group)
+                
+                state["found_groups"] = unique_duplicates
+                view.after(0, lambda: render_results(unique_duplicates, len(ref_files + search_files)))
+                logger.info(f"Успешно найдено {len(unique_duplicates)} уникальных совпадений")
 
         except Exception as e:
+            logger.error(f"Ошибка сканирования: {e}", exc_info=True)
             print(f"Ошибка сканирования: {e}")
             view.after(0, lambda: show_message("Ошибка сканирования"))
             view.after(2000, lambda: switch_view("setup"))

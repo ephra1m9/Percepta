@@ -4,7 +4,7 @@ import src.ui.ui_components as ui_component
 
 
 def create_settings_view(parent, app_state, show_error_callback=None):
-    view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
+    view = ctk.CTkScrollableFrame(parent, fg_color="#FFFFFF", corner_radius=15)
 
     view.grid_columnconfigure(0, weight=1)
     view.grid_rowconfigure(2, weight=1)
@@ -27,7 +27,6 @@ def create_settings_view(parent, app_state, show_error_callback=None):
     tolerance_frame.grid(row=1, column=0, sticky="ew", pady=(0, 25))
     tolerance_frame.grid_columnconfigure(0, weight=1)
 
-    # Используем .get() на случай, если в app_state еще нет ключа, ставим 15 по умолчанию
     current_tolerance = app_state.get('tolerance', 15)
 
     lbl_tolerance = ctk.CTkLabel(tolerance_frame, text=f"Уровень строгости (совпадающие точки): {current_tolerance}", font=ui_component.FONTS['main'])

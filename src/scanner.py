@@ -11,7 +11,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Инициализируем OpenCV с ограничением в 800 точек (больше для кадрированных изображений)
+# Инициализируем OpenCV с ограничением в 800 точек
 orb = cv2.ORB_create(nfeatures=800)
 bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
 
@@ -232,7 +232,7 @@ def are_images_matching(des1, des2, min_matches=None, lowe_ratio=0.65, ratio_thr
         return False
 
 def find_duplicates(image_paths, tolerance=15):
-    """Поиск дубликатов СТРОГО по pHash (как и должно быть)"""
+    """Поиск дубликатов СТРОГО по pHash"""
     phash_tolerance = max(1, tolerance // 3)
     logger.info(f"Поиск дубликатов: {len(image_paths)} файлов, pHash tolerance={phash_tolerance}")
     

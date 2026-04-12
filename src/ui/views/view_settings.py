@@ -15,6 +15,8 @@ def create_settings_view(parent, app_state, show_error_callback=None):
 
     ui_component.title(content, "Настройки программы")
 
+    # ui_component.subtitle(content, "Общие настройки")
+
     # Настройки чувствительности алгоритма
     def update_tolerance(value):
         val = int(value)

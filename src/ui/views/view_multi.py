@@ -10,7 +10,7 @@ from PIL import Image
 
 import src.ui.ui_components as ui_component
 from src.utils import get_image_files
-from src.scanner import find_duplicates, get_image_data, are_images_matching, compare_histograms, find_reference_matches
+from src.scanner import get_image_data, are_images_matching, compare_histograms, find_reference_matches
 
 # Настройка логирования
 logger = logging.getLogger(__name__)

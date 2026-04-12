@@ -30,6 +30,7 @@ COLORS = {
 
 FONTS = {
     "title": ("Montserrat", 26, "bold"),
+    "subtitle": ("Rubik", 20, "bold"),
     "main": ("Rubik", 16),
     "second": ("Rubik Light", 15),
     "second_btn": ("Rubik", 15)
@@ -105,7 +106,7 @@ def title(view, text: str):
 
 def subtitle(view, text: str):
     """Подзаголовок (второго уровня)"""
-    return ctk.CTkLabel(view, text=text, font=FONTS['main'], text_color=COLORS["text_main"]).pack(anchor="w", pady=(0, 10))
+    return ctk.CTkLabel(view, text=text, font=FONTS['subtitle'], text_color=COLORS["text_main"]).pack(anchor="w", pady=(0, 10))
 
 
 def description(view, text: str):

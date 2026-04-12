@@ -1,4 +1,5 @@
 import os
+import re
 import threading
 import shutil
 import customtkinter as ctk
@@ -8,7 +9,7 @@ from PIL import Image
 
 import src.ui.ui_components as ui_component
 from src.utils import get_image_files
-from src.scanner import find_duplicates
+from src.scanner import find_duplicates, get_image_data
 
 
 def create_multi_folder_view(parent, app_state, show_error_callback):
@@ -222,26 +223,82 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
 
     def run_scan(ref_folder, search_folders, tolerance):
         try:
-            ref_files = get_image_files(ref_folder, recursive=app_state.get("search_recursive", False))
+            is_recursive = app_state.get("search_recursive", False)
+            ref_files = get_image_files(ref_folder, recursive=is_recursive)
+            
             search_files = []
-            for folder in search_folders:
-                search_files.extend(get_image_files(folder, recursive=app_state.get("search_recursive", False)))
+            for folder in search_folders: 
+                search_files.extend(get_image_files(folder, recursive=is_recursive))
 
             if not ref_files or not search_files: 
                 view.after(0, lambda: show_message("Папки пусты"))
                 view.after(2000, lambda: switch_view("setup"))
                 return
-            
-            raw_duplicates = find_duplicates(ref_files + search_files, tolerance)
-            ref_path_norm = os.path.normpath(ref_folder)
-            def is_ref(path): return os.path.normpath(path).startswith(ref_path_norm)
+
+            # --- ГИБРИДНЫЙ ПОИСК ---
+            # 1. Индексируем эталонные файлы по имени
+            ref_by_name = {}
+            for p in ref_files:
+                stem = os.path.splitext(os.path.basename(p))[0].lower().strip()
+                if stem not in ref_by_name: ref_by_name[stem] = []
+                ref_by_name[stem].append(p)
 
             target_duplicates = []
-            for group in raw_duplicates:
-                refs = [p for p in group if is_ref(p)]
-                searches = [p for p in group if not is_ref(p)]
-                if refs and searches: target_duplicates.append(refs + searches)
+            matched_searches = set()
+            matched_refs = set()
+
+            # 2. ШАГ 1: Поиск по именам (с мягкой визуальной проверкой)
+            # Если имя совпало, мы удваиваем tolerance, так как уверены в совпадении
+            relaxed_tolerance = tolerance + 15 
             
+            # Подготовим данные эталонов для быстрой проверки
+            ref_data_map = {} 
+
+            for s_path in search_files:
+                s_stem = os.path.splitext(os.path.basename(s_path))[0].lower().strip()
+                
+                if s_stem in ref_by_name:
+                    s_data = get_image_data(s_path)[0] # Берем данные рабочего файла
+                    
+                    for r_path in ref_by_name[s_stem]:
+                        if r_path not in ref_data_map:
+                            ref_data_map[r_path] = get_image_data(r_path)[0]
+                        
+                        r_data = ref_data_map[r_path]
+                        
+                        # Проверяем визуально, но с большим допуском
+                        is_match = False
+                        for sh in s_data['hashes']:
+                            for rh in r_data['hashes']:
+                                if sh - rh <= relaxed_tolerance:
+                                    is_match = True
+                                    break
+                            if is_match: break
+                        
+                        if is_match:
+                            target_duplicates.append([r_path, s_path])
+                            matched_searches.add(s_path)
+                            matched_refs.add(r_path)
+                            break
+
+            # 3. ШАГ 2: Поиск тех, кто переименован (стандартный визуальный поиск)
+            remaining_searches = [p for p in search_files if p not in matched_searches]
+            remaining_refs = [p for p in ref_files if p not in matched_refs]
+
+            if remaining_searches and remaining_refs:
+                # Используем стандартный find_duplicates для остатков
+                raw_visual = find_duplicates(remaining_refs + remaining_searches, tolerance)
+                
+                ref_path_norm = os.path.normpath(ref_folder)
+                def is_ref(path): return os.path.normpath(path).startswith(ref_path_norm)
+
+                for group in raw_visual:
+                    refs = [p for p in group if is_ref(p)]
+                    searches = [p for p in group if not is_ref(p)]
+                    if refs and searches:
+                        target_duplicates.append(refs + searches)
+
+            # --- ВЫВОД РЕЗУЛЬТАТОВ ---
             if not target_duplicates:
                 view.after(0, lambda: show_message("Совпадений не найдено"))
                 view.after(2000, lambda: switch_view("setup"))
@@ -249,7 +306,8 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
                 state["found_groups"] = target_duplicates
                 view.after(0, lambda: render_results(target_duplicates, len(ref_files + search_files)))
 
-        except Exception:
+        except Exception as e:
+            print(f"Ошибка сканирования: {e}")
             view.after(0, lambda: show_message("Ошибка сканирования"))
             view.after(2000, lambda: switch_view("setup"))
         finally:

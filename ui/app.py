@@ -4,7 +4,8 @@ import customtkinter as ctk
 from PIL import Image, ImageFont, ImageDraw
 
 import ui.ui_components as ui_component
-from utils.config import VERSION
+import utils.config as cfg
+
 from .pages.page_dublicates import create_dublicates_view
 from .pages.page_reference import create_reference_view
 from .pages.page_originals import create_originals_view
@@ -75,8 +76,8 @@ def show_error_modal(root, message):
 
 def main():
     root = ctk.CTk()
-    root.title("Percepta — Поиск дубликатов")
-    root.geometry("900x700")
+    root.title(cfg.APP_TITLE)
+    root.geometry(cfg.APP_SIZE)
     root.minsize(800, 500)
     root.configure(fg_color=ui_component.COLORS["bg_app"])
 
@@ -130,7 +131,7 @@ def main():
 
     ui_component.hr_grid(sidebar_frame, row=8, pady=20)
 
-    ctk.CTkLabel(sidebar_frame, text=f"v. {VERSION}", font=ui_component.FONTS['second'], text_color=ui_component.COLORS['text_muted']).grid(row=9, column=0, padx=20, pady=(0, 30))
+    ctk.CTkLabel(sidebar_frame, text=f"v. {cfg.VERSION}", font=ui_component.FONTS['second'], text_color=ui_component.COLORS['text_muted']).grid(row=9, column=0, padx=20, pady=(0, 30))
 
     def error_callback(msg):
         show_error_modal(root, msg)

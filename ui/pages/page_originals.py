@@ -7,7 +7,7 @@ import customtkinter as ctk
 from tkinter import filedialog
 
 import ui.ui_components as ui_component
-from utils.utils import get_image_files
+from utils.helper import get_image_files
 from utils.scanner import find_originals
 
 

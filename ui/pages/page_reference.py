@@ -9,7 +9,7 @@ from tkinter import filedialog
 from PIL import Image
 
 import ui.ui_components as ui_component
-from utils.utils import get_image_files
+from utils.helper import get_image_files
 from utils.scanner import get_image_data, are_images_matching, compare_histograms, find_reference_matches
 
 # Настройка логирования

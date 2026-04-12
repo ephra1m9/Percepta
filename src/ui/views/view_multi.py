@@ -206,10 +206,26 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
                 for group in state["found_groups"]:
                     ref_name = os.path.basename(group[0])
                     name, ext = os.path.splitext(ref_name)
-                    new_name = f"{name}_found-copy{ext}"
-                    dest_path = os.path.join(state["reference_folder"], new_name)
-                    shutil.copy2(group[1], dest_path)
-                    count += 1
+                    
+                    # Копируем все найденные файлы для этого эталона
+                    for i, found_path in enumerate(group[1:], 1):
+                        # Если найдена только одна копия, не добавляем индекс
+                        if len(group) == 2:
+                            new_name = f"{name}_found-copy{ext}"
+                        else:
+                            new_name = f"{name}_found-copy_{i}{ext}"
+                            
+                        dest_path = os.path.join(state["reference_folder"], new_name)
+                        
+                        # Защита от перезаписи, если файл уже существует
+                        counter = 1
+                        while os.path.exists(dest_path):
+                            new_name = f"{name}_found-copy_{i}_{counter}{ext}"
+                            dest_path = os.path.join(state["reference_folder"], new_name)
+                            counter += 1
+                            
+                        shutil.copy2(found_path, dest_path)
+                        count += 1
                 show_message(f"✅ Скопировано в архив: {count}")
 
             elif action == "delete":
@@ -218,8 +234,8 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
                     if os.path.exists(file_path): os.remove(file_path)
                 show_message(f"✅ Удалено из эталона: {len(to_delete)}")
                 
-            state["found_groups"] = [] 
-            view.after(2500, lambda: switch_view("setup")) 
+            state["found_groups"] = []
+            view.after(2500, lambda: switch_view("setup"))
                 
         except Exception as e:
             show_error_callback(f"Ошибка:\n{e}")
@@ -290,12 +306,13 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
                             s_data['descriptors'],
                             r_data['descriptors'],
                             min_matches=relaxed_tolerance,
+                            ratio_threshold=0.05,
                             debug_info=f"{os.path.basename(s_path)} <-> {os.path.basename(r_path)}"
                         )
                         if match_result:
                             target_duplicates.append([r_path, s_path])
                             matched_searches.add(s_path)
-                            matched_refs.add(r_path)
+                            # Убрали matched_refs.add(r_path), чтобы эталон мог находить несколько копий
                             orb_matches += 1
                             logger.info(f"Найдено совпадение по имени+ORB: {os.path.basename(r_path)} <-> {os.path.basename(s_path)}")
                             break
@@ -313,10 +330,9 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
             
             # Добавляем найденные совпадения
             for ref_path, search_path in reference_matches:
-                if search_path not in matched_searches and ref_path not in matched_refs:
+                if search_path not in matched_searches:
                     target_duplicates.append([ref_path, search_path])
                     matched_searches.add(search_path)
-                    matched_refs.add(ref_path)
             
             logger.info(f"Улучшенный поиск нашел {len(reference_matches)} совпадений")
 
@@ -327,18 +343,20 @@ def create_multi_folder_view(parent, app_state, show_error_callback):
                 view.after(0, lambda: show_message("Совпадений не найдено"))
                 view.after(2000, lambda: switch_view("setup"))
             else:
-                # Убираем дубликаты
-                unique_duplicates = []
-                seen = set()
-                for group in target_duplicates:
-                    key = tuple(sorted(group))
-                    if key not in seen:
-                        seen.add(key)
-                        unique_duplicates.append(group)
+                # Группируем результаты по эталонному файлу
+                grouped_results = {}
+                for ref_path, search_path in target_duplicates:
+                    if ref_path not in grouped_results:
+                        grouped_results[ref_path] = [ref_path]
+                    if search_path not in grouped_results[ref_path]:
+                        grouped_results[ref_path].append(search_path)
                 
-                state["found_groups"] = unique_duplicates
-                view.after(0, lambda: render_results(unique_duplicates, len(ref_files + search_files)))
-                logger.info(f"Успешно найдено {len(unique_duplicates)} уникальных совпадений")
+                # Преобразуем словарь в список списков
+                final_groups = list(grouped_results.values())
+                
+                state["found_groups"] = final_groups
+                view.after(0, lambda: render_results(final_groups, len(ref_files + search_files)))
+                logger.info(f"Успешно найдено {len(final_groups)} групп совпадений")
 
         except Exception as e:
             logger.error(f"Ошибка сканирования: {e}", exc_info=True)

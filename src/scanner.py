@@ -76,7 +76,7 @@ def find_reference_matches(reference_paths, search_paths, tolerance=15):
     
     # Увеличиваем порог pHash для ретушированных изображений
     phash_tolerance = tolerance  # Увеличили с tolerance//3 до tolerance
-    histogram_threshold = 0.75
+    histogram_threshold = 0.70
     
     logger.info(f"Параметры поиска: pHash tolerance={phash_tolerance}, histogram threshold={histogram_threshold}")
     
@@ -125,6 +125,7 @@ def find_reference_matches(reference_paths, search_paths, tolerance=15):
                         des1, des2,
                         min_matches=dynamic_min_matches,
                         lowe_ratio=0.7,
+                        ratio_threshold=0.10,
                         debug_info=None
                     )
                     if orb_match:
@@ -191,7 +192,7 @@ def compare_histograms(hist1, hist2):
     except:
         return 0.0
 
-def are_images_matching(des1, des2, min_matches=None, lowe_ratio=0.65, debug_info=None):
+def are_images_matching(des1, des2, min_matches=None, lowe_ratio=0.65, ratio_threshold=0.25, debug_info=None):
     """Улучшенное сравнение с динамическим min_matches"""
     if des1 is None or des2 is None or len(des1) < 10 or len(des2) < 10:
         if debug_info:
@@ -213,9 +214,9 @@ def are_images_matching(des1, des2, min_matches=None, lowe_ratio=0.65, debug_inf
                 if m.distance < lowe_ratio * n.distance:
                     good_matches.append(m)
         
-        # Более мягкая проверка: минимум 25% matches от минимального количества дескрипторов
+        # Более мягкая проверка: минимум ratio_threshold matches от минимального количества дескрипторов
         min_descriptors = min(len(des1), len(des2))
-        ratio_ok = len(good_matches) >= min_descriptors * 0.25
+        ratio_ok = len(good_matches) >= min_descriptors * ratio_threshold
         
         result = len(good_matches) >= min_matches and ratio_ok
         

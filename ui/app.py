@@ -106,7 +106,7 @@ def main():
 
     # Иконки
     icon_single = create_font_icon("\uF42B", icon_path, size=16, color="#333333")
-    icon_multi = create_font_icon("\uF2D1", icon_path, size=16, color="#333333")
+    icon_multi = create_font_icon("\uF5A9", icon_path, size=16, color="#333333")
     icon_originals = create_font_icon("\uF787", icon_path, size=16, color="#333333")
     icon_settings = create_font_icon("\uF3E5", icon_path, size=16, color="#333333")
 

@@ -91,27 +91,27 @@ def create_originals_view(parent, app_state, show_error_callback):
     actions_grid.pack(side="bottom", fill="x", pady=(10, 0))
 
     ui_component.result_action_card_btn(
-        actions_grid, 
-        "Заменить на оригиналы", 
-        "Удаляет сжатые превью и автоматически подставляет на их место найденные оригиналы", 
+        actions_grid,
+        "Заменить на оригиналы",
+        "Удаляет сжатые превью и автоматически подставляет на их место найденные оригиналы",
         icon_replace,
-        lambda: process_replace
+        lambda: process_replace()
     )
 
     ui_component.result_action_card_btn(
-        actions_grid, 
-        "Скопировать оригиналы", 
-        "Копирует найденные оригиналы и переименовывает их", 
+        actions_grid,
+        "Скопировать оригиналы",
+        "Копирует найденные оригиналы и переименовывает их",
         icon_copy,
-        lambda: process_copy
+        lambda: process_copy()
     )
 
     ui_component.result_action_card_btn(
-        actions_grid, 
-        "Скопировать оригиналы в отдельную папку", 
-        "Копирует оригиналы в новую папку 'Found_Originals' и создает текстовый отчет", 
+        actions_grid,
+        "Скопировать оригиналы в отдельную папку",
+        "Копирует оригиналы в новую папку 'Found_Originals' и создает текстовый отчет",
         icon_copy_folder,
-        lambda: process_copy_report
+        lambda: process_copy_report()
     )
 
     # 3. Список результатов

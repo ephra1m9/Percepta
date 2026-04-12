@@ -104,42 +104,105 @@ def find_duplicates(image_paths, tolerance=5):
 
 def find_originals(low_res_paths, high_res_paths, tolerance=5):
     """Ищет оригиналы изображений"""
-    server_data = []
-    for path in high_res_paths:
-        server_data.extend(get_image_data(path))
-
     results = {'found': [], 'not_found': []}
+    high_res_by_name = {}
 
+    for p in high_res_paths:
+        stem = os.path.splitext(os.path.basename(p))[0].lower().strip()
+
+        if stem not in high_res_by_name:
+            high_res_by_name[stem] = []
+
+        high_res_by_name[stem].append(p)
+
+    high_res_data_cache = {}
+    
+    def get_cached_image_data(path):
+        """Возвращает кэшированные данные изображения, вычисляя при необходимости."""
+        if path not in high_res_data_cache:
+            high_res_data_cache[path] = get_image_data(path)
+        return high_res_data_cache[path]
+
+    unmatched_low_files = []
+
+    # Этап 1 (поиск по имени)
     for low_path in low_res_paths:
         low_data_list = get_image_data(low_path)
+
         if not low_data_list:
             results['not_found'].append(low_path)
             continue
-            
-        low_hashes = low_data_list[0]['hashes']
-        
-        best_match_path = None
-        best_match_page = None
-        max_pixels = -1
-        
-        for s_data in server_data:
-            is_match = False
-            for lh in low_hashes:
-                for sh in s_data['hashes']:
-                    if lh - sh <= tolerance:
-                        is_match = True
-                        break
-                if is_match: break
-            
-            if is_match:
-                if s_data['pixels'] > max_pixels:
-                    max_pixels = s_data['pixels']
-                    best_match_path = s_data['path'] 
-                    best_match_page = s_data['page']
-        
-        if best_match_path:
-            results['found'].append((low_path, best_match_path, best_match_page))
-        else:
-            results['not_found'].append(low_path)
+
+        for low_data in low_data_list:
+            low_hashes = low_data['hashes']
+            stem = os.path.splitext(os.path.basename(low_path))[0].lower().strip()
+
+            verified_match_path = None
+            verified_match_page = None
+            best_score = -1
+
+            if stem in high_res_by_name:
+                for match_path in high_res_by_name[stem]:
+                    match_data = get_cached_image_data(match_path)
+
+                    for m_data in match_data:
+                        is_match = False
+
+                        for lh in low_hashes:
+                            for mh in m_data['hashes']:
+                                if lh - mh <= tolerance:
+                                    is_match = True
+                                    break
+
+                            if is_match: break
+
+                        if is_match:
+                            current_score = m_data['pixels']
+
+                            if current_score > best_score:
+                                best_score = current_score
+                                verified_match_path = m_data['path']
+                                verified_match_page = m_data['page']
+
+            if verified_match_path:
+                results['found'].append((low_path, verified_match_path, verified_match_page))
+                break
+            else:
+                unmatched_low_files.append((low_path, low_hashes))
+
+    # Этап 2 (визуальный поиск)
+    if unmatched_low_files:
+        high_res_data = []
+        for path in high_res_paths:
+            high_res_data.extend(get_cached_image_data(path))
+
+        for low_path, low_hashes in unmatched_low_files:
+            best_match_path = None
+            best_match_page = None
+            best_score = -1
+
+            for hr_data in high_res_data:
+                is_match = False
+
+                for lh in low_hashes:
+                    for hr_h in hr_data['hashes']:
+                        if lh - hr_h <= tolerance:
+                            is_match = True
+                            break
+
+                    if is_match: break
+
+                if is_match:
+                    current_score = hr_data['pixels']
+
+                    if current_score > best_score:
+                        best_score = current_score
+                        best_match_path = hr_data['path']
+                        best_match_page = hr_data['page']
+
+            if best_match_path:
+                results['found'].append((low_path, best_match_path, best_match_page))
+            else:
+                results['not_found'].append(low_path)
 
     return results

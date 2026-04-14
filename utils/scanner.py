@@ -6,18 +6,22 @@ import re
 import imagehash
 from PIL import Image
 import logging
+
 from functools import lru_cache
+from multiprocessing import Pool, cpu_count
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Инициализируем OpenCV
-orb = cv2.ORB_create(nfeatures=1500)
+orb = cv2.ORB_create(nfeatures=1000)  # Уменьшено для скорости
 bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
 
 # Глобальный кэш для данных изображений
 _image_data_cache = {}
+_use_multiprocessing = False  # Отключено для стабильности
+_max_workers = max(1, cpu_count() - 1)
 
 
 def get_image_data_cached(path):
@@ -31,6 +35,39 @@ def clear_image_cache():
     """Очистка кэша изображений"""
     global _image_data_cache
     _image_data_cache.clear()
+
+
+def _process_single_image(path):
+    return path, get_image_data(path)
+
+
+def get_all_image_data_parallel(paths, num_workers=None):
+    if num_workers is None:
+        num_workers = _max_workers
+    
+    results = {}
+    
+    if len(paths) < 10 or not _use_multiprocessing:
+        for path in paths:
+            data = get_image_data(path)
+            if data:
+                results[path] = data
+    else:
+        logger.info(f"Параллельная обработка {len(paths)} файлов на {num_workers} процессах")
+        try:
+            with Pool(num_workers) as pool:
+                for path, data_list in pool.imap(_process_single_image, paths, chunksize=5):
+                    if data_list:
+                        results[path] = data_list
+        except Exception as e:
+            logger.warning(f"Многопроцессорная обработка не удалась: {e}")
+            logger.info("Используем последовательную обработку...")
+            for path in paths:
+                data = get_image_data(path)
+                if data:
+                    results[path] = data
+    
+    return results
 
 
 def get_hashes_with_rotations(img):
@@ -230,35 +267,40 @@ def are_images_matching(des1, des2, min_matches=None, lowe_ratio=0.72, ratio_thr
 
 def find_reference_matches(reference_paths, search_paths, tolerance=15):
     """
-    Улучшенный поиск по эталону.
-    Комбинирует pHash, гистограммы, SSIM и ORB для максимального обнаружения.
+    Улучшенный поиск по эталону с параллельной обработкой.
     """
     logger.info(f"Поиск по эталону: {len(reference_paths)} эталонов, {len(search_paths)} для поиска")
     
-    # Рассчитываем адаптивные пороги (баланс между точностью и полнотой)
-    phash_tolerance = min(18, tolerance + 5)  # Ослаблен для отретушированных
-    histogram_threshold = 0.65  # Снижен для гибкости
-    ssim_threshold = 0.85  # Снижен для ретушированных
+    # Рассчитываем адаптивные пороги
+    phash_tolerance = min(18, tolerance + 5)
+    histogram_threshold = 0.65
+    ssim_threshold = 0.85
     
     logger.info(f"Пороги: pHash<={phash_tolerance}, hist>={histogram_threshold}, SSIM>={ssim_threshold}")
+    
+    # Параллельно вычисляем данные для всех файлов
+    all_paths = list(set(reference_paths + search_paths))
+    logger.info(f"Вычисление данных для {len(all_paths)} файлов...")
+    all_data = get_all_image_data_parallel(all_paths)
+    logger.info(f"Данные вычислены для {len(all_data)} файлов")
     
     matches = []
     matched_search = set()
     
     # Обрабатываем эталонные файлы
     for ref_path in reference_paths:
-        ref_data_list = get_image_data_cached(ref_path)
-        if not ref_data_list:
+        if ref_path not in all_data:
             continue
+        ref_data_list = all_data[ref_path]
         
         for ref_data in ref_data_list:
             for search_path in search_paths:
                 if search_path in matched_search:
                     continue
-                
-                search_data_list = get_image_data_cached(search_path)
-                if not search_data_list:
+                if search_path not in all_data:
                     continue
+                
+                search_data_list = all_data[search_path]
                 
                 for search_data in search_data_list:
                     match_result = check_images_match(
@@ -270,7 +312,7 @@ def find_reference_matches(reference_paths, search_paths, tolerance=15):
                         matches.append([ref_path, search_path])
                         matched_search.add(search_path)
                         logger.info(f"Совпадение: {os.path.basename(ref_path)} -> {os.path.basename(search_path)}")
-                        break  # Нашли совпадение для этого search_path, берём следующий
+                        break
     
     logger.info(f"Найдено {len(matches)} совпадений")
     return matches

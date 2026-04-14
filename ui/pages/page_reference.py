@@ -10,7 +10,7 @@ from PIL import Image
 
 import ui.ui_components as ui_component
 from utils.helper import get_image_files
-from utils.scanner import get_image_data, are_images_matching, compare_histograms, find_reference_matches
+from utils.scanner import clear_image_cache, find_reference_matches
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -242,10 +242,18 @@ def create_reference_view(parent, app_state, show_error_callback):
 
 
     def run_scan(ref_folder, search_folders, tolerance):
+        """
+        Упрощённый поиск по эталону.
+        Использует единый алгоритм find_reference_matches с комбинированными методами:
+        pHash, гистограммы, SSIM, ORB.
+        """
         try:
             logger.info(f"=== НАЧАЛО СКАНИРОВАНИЯ ===")
             logger.info(f"Эталонная папка: {ref_folder} ({len(search_folders)} папок для поиска)")
             logger.info(f"Толерантность: {tolerance}")
+            
+            # Очищаем кэш перед новым сканированием
+            clear_image_cache()
             
             is_recursive = app_state.get("search_recursive", False)
             ref_files = get_image_files(ref_folder, recursive=is_recursive)
@@ -263,85 +271,22 @@ def create_reference_view(parent, app_state, show_error_callback):
                 view.after(2000, lambda: switch_view("setup"))
                 return
 
-            def clean_filename(filename):
-                stem = os.path.splitext(os.path.basename(filename))[0].lower().strip()
-                return re.sub(r'(_original|_edit|_retouch|-copy|\(\d+\))$', '', stem).strip()
-
-            ref_by_name = {}
-            for p in ref_files:
-                stem = clean_filename(p)
-                if stem not in ref_by_name: ref_by_name[stem] = []
-                ref_by_name[stem].append(p)
-
-            target_duplicates = []
-            matched_searches = set()
-            matched_refs = set()
-            ref_data_map = {}
-            relaxed_tolerance = max(8, tolerance - 5)
+            # Используем улучшенный алгоритм поиска по эталону
+            # tolerance передаётся как базовый параметр, внутри он корректируется
+            logger.info(f"Запуск поиска по эталону...")
             
-            logger.info(f"ШАГ 1: Поиск по именам (relaxed_tolerance={relaxed_tolerance})")
-
-            # ШАГ 1: Поиск с использованием имен
-            name_matches = 0
-            orb_matches = 0
-            for s_path in search_files:
-                s_stem = clean_filename(s_path)
-                
-                if s_stem in ref_by_name:
-                    name_matches += 1
-                    s_data_list = get_image_data(s_path)
-                    if not s_data_list: continue
-                    s_data = s_data_list[0]
-                    
-                    for r_path in ref_by_name[s_stem]:
-                        if r_path not in ref_data_map:
-                            r_data_list = get_image_data(r_path)
-                            if not r_data_list: continue
-                            ref_data_map[r_path] = r_data_list[0]
-                        
-                        r_data = ref_data_map[r_path]
-                        
-                        # Сравниваем точки
-                        match_result = are_images_matching(
-                            s_data['descriptors'],
-                            r_data['descriptors'],
-                            min_matches=relaxed_tolerance,
-                            ratio_threshold=0.05,
-                            debug_info=f"{os.path.basename(s_path)} <-> {os.path.basename(r_path)}"
-                        )
-                        if match_result:
-                            target_duplicates.append([r_path, s_path])
-                            matched_searches.add(s_path)
-                            # Убрали matched_refs.add(r_path), чтобы эталон мог находить несколько копий
-                            orb_matches += 1
-                            logger.info(f"Найдено совпадение по имени+ORB: {os.path.basename(r_path)} <-> {os.path.basename(s_path)}")
-                            break
-
-            logger.info(f"ШАГ 1 завершен: совпадений по именам={name_matches}, ORB совпадений={orb_matches}")
-
-            # ШАГ 2: Используем алгоритм поиска по эталону для всех файлов
-            logger.info(f"ШАГ 2: Запуск улучшенного поиска по эталону")
+            matches = find_reference_matches(ref_files, search_files, tolerance=tolerance)
             
-            enhanced_tolerance = min(30, tolerance + 5)
-            reference_matches = find_reference_matches(ref_files, search_files, tolerance=enhanced_tolerance)
-            
-            # Добавляем найденные совпадения
-            for ref_path, search_path in reference_matches:
-                if search_path not in matched_searches:
-                    target_duplicates.append([ref_path, search_path])
-                    matched_searches.add(search_path)
-            
-            logger.info(f"Улучшенный поиск нашел {len(reference_matches)} совпадений")
+            logger.info(f"Найдено {len(matches)} совпадений")
 
-            logger.info(f"ИТОГО найдено совпадений: {len(target_duplicates)}")
-            
-            if not target_duplicates:
+            if not matches:
                 logger.info("Совпадений не найдено")
                 view.after(0, lambda: show_message("Совпадений не найдено"))
                 view.after(2000, lambda: switch_view("setup"))
             else:
+                # Группируем результаты: эталон -> список найденных копий
                 grouped_results = {}
-                for ref_path, search_path in target_duplicates:
+                for ref_path, search_path in matches:
                     if ref_path not in grouped_results:
                         grouped_results[ref_path] = [ref_path]
                     if search_path not in grouped_results[ref_path]:

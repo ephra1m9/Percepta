@@ -3,21 +3,21 @@ import textwrap
 
 
 COLORS = {
-    "bg_app": "#F1F4F9",
+    "bg_app": "#F1F1F1",
     "bg_surface": "#FFFFFF",
     "bg_input": "#EFF3F8",
 
     "border": "#E2E8F0",
     "border_dark": "#CDD6E4",
 
-    "text_main": "#1E2A3A",
-    "text_second": "#5A6C7E",
-    "text_muted": "#8C9AA8",
+    "text_main": "#212121",
+    "text_second": "#424242",
+    "text_muted": "#616161",
     "text_light": "#FFFFFF",
 
-    "primary": "#2C6B9E",
+    "primary": "#2C2C2C",
     "primary_hover": "#1E4A6E",
-    "primary_light": "#EBF5FB",
+    "primary_light": "#C2BDE0",
 
     "primary_btn": "#000000",
     "primary_btn_hover": "#1A1A1A",
@@ -101,7 +101,7 @@ class CTkAdaptiveLabel(ctk.CTkLabel):
 
 def title(view, text: str):
     """Основной заголовок"""
-    return ctk.CTkLabel(view, text=text, font=FONTS['title']).grid(row=0, column=0, sticky="w", pady=(0, 20))
+    return ctk.CTkLabel(view, text=text, font=FONTS['title'], text_color=COLORS['text_second']).grid(row=0, column=0, sticky="w", pady=(0, 20))
 
 
 def subtitle(view, text: str):

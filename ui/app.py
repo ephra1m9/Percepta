@@ -144,8 +144,8 @@ def main():
         "settings": create_settings_view(root, app_state, error_callback)
     }
 
-    for view in views.values():
-        view.configure(fg_color=ui_component.COLORS["bg_surface"], corner_radius=15)
+    # for view in views.values():
+    #     view.configure(fg_color=ui_component.COLORS["bg_surface"], corner_radius=15)
 
     def select_frame_by_name(name):
         for btn in nav_buttons.values():
@@ -154,7 +154,7 @@ def main():
             view.grid_forget()
 
         nav_buttons[name].configure(fg_color=ui_component.COLORS.get("primary_light", "lightblue"), text_color=ui_component.COLORS["primary"])
-        views[name].grid(row=0, column=1, sticky="nsew", padx=30, pady=30)
+        views[name].grid(row=0, column=1, sticky="nsew", padx=(30, 0), pady=30)
 
     # Прявязка событий к кнопкам
     nav_buttons["single"].configure(command=lambda: select_frame_by_name("single"))

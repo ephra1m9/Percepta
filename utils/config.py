@@ -1,4 +1,4 @@
-VERSION="0.5"
+VERSION="0.6"
 APP_TITLE="Percepta — Поиск дубликатов"
 APP_SIZE="900x700"
 

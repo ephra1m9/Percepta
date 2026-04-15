@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_reference_view(parent, app_state, show_error_callback):
-    view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
+    view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=20)
     
     content = ctk.CTkFrame(view, fg_color="transparent")
     content.pack(fill="both", expand=True, padx=40, pady=20)
@@ -45,6 +45,7 @@ def create_reference_view(parent, app_state, show_error_callback):
     # ================= ЭКРАН 1: НАСТРОЙКИ =================
     setup_frame = ctk.CTkFrame(main_container, fg_color="transparent")
     setup_frame.grid_columnconfigure(0, weight=1)
+    setup_frame.grid_rowconfigure(4, weight=1)
 
     ui_component.title(setup_frame, "Поиск по эталону")
     ui_component.description(
@@ -56,7 +57,7 @@ def create_reference_view(parent, app_state, show_error_callback):
     frame_ref.grid(row=2, column=0, sticky="ew", pady=(20, 10))
     btn_ref = ctk.CTkButton(frame_ref, text="Эталонная папка", image=icon_folder, font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
     btn_ref.pack(side="left", padx=10, pady=10)
-    lbl_ref = ctk.CTkLabel(frame_ref, text="Изображения которые нужно найти", text_color=ui_component.COLORS["text_muted"], font=ui_component.FONTS['second'], anchor="e")
+    lbl_ref = ctk.CTkLabel(frame_ref, text="Изображения которые нужно найти", text_color=ui_component.COLORS["text_second"], font=ui_component.FONTS['second'], anchor="e")
     lbl_ref.pack(side="left", padx=10, pady=10, fill="x", expand=True)
 
     frame_btns = ctk.CTkFrame(setup_frame, fg_color="transparent")
@@ -66,20 +67,15 @@ def create_reference_view(parent, app_state, show_error_callback):
     btn_clear = ctk.CTkButton(frame_btns, text="Очистить список", font=ui_component.FONTS['second_btn'], image=icon_clear, **ui_component.BUTTON_SECONDARY_DANGER)
     btn_clear.pack(side="left")
 
-    listbox = ctk.CTkTextbox(setup_frame, height=120, state="disabled", font=ui_component.FONTS['second'], fg_color=ui_component.COLORS["bg_input"], text_color=ui_component.COLORS["text_main"], border_width=0, corner_radius=8)
-    listbox.grid(row=4, column=0, sticky="ew", pady=(0, 20))
+    listbox = ctk.CTkTextbox(setup_frame, height=120, state="disabled", font=ui_component.FONTS['second'], fg_color=ui_component.COLORS["bg_input"], text_color=ui_component.COLORS["text_main"], border_width=0, corner_radius=10)
+    listbox.grid(row=4, column=0, sticky="nsew", pady=(0, 20))
 
     btn_start = ctk.CTkButton(setup_frame, image=icon_search, text="Начать поиск", font=ui_component.FONTS['main'], **ui_component.BUTTON_PRIMARY)
     btn_start.grid(row=5, column=0, sticky="ew")
 
-    lbl_status = ctk.CTkLabel(setup_frame, text="Настройте папки для начала", font=ui_component.FONTS['second'], text_color=ui_component.COLORS["text_muted"])
-    lbl_status.grid(row=6, column=0, pady=10)
-
 
     # ================= ЭКРАН 2: ЗАГРУЗКА И СООБЩЕНИЯ =================
-    message_frame = ctk.CTkFrame(main_container, fg_color="transparent")
-    lbl_message_big = ctk.CTkLabel(message_frame, text="", font=ui_component.FONTS['title'], text_color=ui_component.COLORS["text_muted"])
-    lbl_message_big.place(relx=0.5, rely=0.5, anchor="center")
+    loading_view, update_loading = ui_component.process_screen(main_container, title="Cравнение с эталоном", scan_mode="reference")
 
 
     # ================= ЭКРАН 3: РЕЗУЛЬТАТЫ И КАРТОЧКИ =================
@@ -114,26 +110,25 @@ def create_reference_view(parent, app_state, show_error_callback):
     )
 
     # Список
-    results_scroll = ctk.CTkScrollableFrame(results_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS["border"], corner_radius=8)
+    results_scroll = ctk.CTkScrollableFrame(results_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS["border"], corner_radius=10)
     results_scroll.pack(side="top", fill="both", expand=True, pady=(0, 5))
 
 
     # --- ЛОГИКА ИНТЕРФЕЙСА ---
     def switch_view(view_name):
         setup_frame.grid_remove()
-        message_frame.grid_remove()
+        loading_view.grid_remove()
         results_frame.grid_remove()
 
         if view_name == "setup":
             setup_frame.grid(row=0, column=0, sticky="nsew")
         elif view_name == "message":
-            message_frame.grid(row=0, column=0, sticky="nsew")
+            loading_view.grid(row=0, column=0)
         elif view_name == "results":
             results_frame.grid(row=0, column=0, sticky="nsew")
 
 
     def show_message(text):
-        lbl_message_big.configure(text=text)
         switch_view("message")
 
     switch_view("setup")
@@ -145,7 +140,6 @@ def create_reference_view(parent, app_state, show_error_callback):
         if folder:
             state["reference_folder"] = folder
             lbl_ref.configure(text=os.path.basename(folder), text_color=ui_component.COLORS["text_main"])
-            check_ready_state()
 
 
     def update_list():
@@ -157,7 +151,6 @@ def create_reference_view(parent, app_state, show_error_callback):
             for i, folder in enumerate(state["target_folders"], 1):
                 listbox.insert("end", f"  {i}. {os.path.basename(folder)}\n")
         listbox.configure(state="disabled")
-        check_ready_state()
 
 
     def add_search_folder():
@@ -172,13 +165,6 @@ def create_reference_view(parent, app_state, show_error_callback):
         update_list()
 
 
-    def check_ready_state():
-        if state["reference_folder"] and state["target_folders"]:
-            lbl_status.configure(text="✅ Готово к сканированию", text_color=ui_component.COLORS["primary"])
-        else:
-            lbl_status.configure(text="Настройте папки для начала", text_color=ui_component.COLORS["text_muted"])
-
-
     def render_results(duplicates, total_files):
         for widget in results_scroll.winfo_children():
             widget.destroy()
@@ -187,7 +173,7 @@ def create_reference_view(parent, app_state, show_error_callback):
         lbl_results_header.configure(text=f"Найдено совпадений: {count}")
 
         for group in duplicates:
-            group_frame = ctk.CTkFrame(results_scroll, fg_color=ui_component.COLORS["bg_surface"], border_width=1, border_color=ui_component.COLORS["border"], corner_radius=6)
+            group_frame = ctk.CTkFrame(results_scroll, fg_color=ui_component.COLORS["bg_surface"], border_width=1, border_color=ui_component.COLORS["border"], corner_radius=10)
             group_frame.pack(fill="x", pady=(0, 10), padx=5)
 
             ctk.CTkLabel(group_frame, text=f"⭐ {os.path.basename(group[0])}", font=ui_component.FONTS['main'], text_color=ui_component.COLORS["primary"]).pack(anchor="w", padx=15, pady=(10, 5))
@@ -271,13 +257,34 @@ def create_reference_view(parent, app_state, show_error_callback):
                 view.after(2000, lambda: switch_view("setup"))
                 return
 
+            total_ref = len(ref_files)
+
+            # Инициализируем прогресс-бар п��ред стартом
+            view.after(0, lambda: update_loading(f"0 / {total_ref}", "0", 0.0))
+
+            # Thread-safe колбэк прогресса — вызывается из фонового потока
+            def on_progress(checked, total, found):
+                progress_value = checked / total if total > 0 else 0.0
+                view.after(0, lambda: update_loading(
+                    f"{checked} / {total}",
+                    str(found),
+                    progress_value
+                ))
+
             # Используем улучшенный алгоритм поиска по эталону
             # tolerance передаётся как базовый параметр, внутри он корректируется
             logger.info(f"Запуск поиска по эталону...")
-            
-            matches = find_reference_matches(ref_files, search_files, tolerance=tolerance)
-            
+
+            matches = find_reference_matches(ref_files, search_files, tolerance=tolerance, progress_callback=on_progress)
+
             logger.info(f"Найдено {len(matches)} совпадений")
+
+            # Финальное обновление — 100%
+            view.after(0, lambda: update_loading(
+                f"{total_ref} / {total_ref}",
+                str(len(matches)),
+                1.0
+            ))
 
             if not matches:
                 logger.info("Совпадений не найдено")

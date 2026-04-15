@@ -46,20 +46,15 @@ def create_dublicates_view(parent, app_state, show_error_callback):
     
     btn_folder = ctk.CTkButton(frame_folder, text="Выбрать папку", font=ui_component.FONTS['second_btn'], image=icon_folder, **ui_component.BUTTON_SECONDARY)
     btn_folder.pack(side="left", padx=10, pady=10)
-    lbl_folder = ctk.CTkLabel(frame_folder, text="Не выбрано", text_color=ui_component.COLORS["text_muted"], font=ui_component.FONTS['second'], anchor="e")
+    lbl_folder = ctk.CTkLabel(frame_folder, text="Не выбрано", text_color=ui_component.COLORS["text_second"], font=ui_component.FONTS['second'], anchor="e")
     lbl_folder.pack(side="left", fill="x", expand=True, padx=10, pady=10)
 
     btn_start = ctk.CTkButton(setup_frame, image=icon_search, text="Начать поиск", font=ui_component.FONTS['main'], **ui_component.BUTTON_PRIMARY)
     btn_start.grid(row=3, column=0, sticky="ew")
 
-    lbl_status = ctk.CTkLabel(setup_frame, text="Выберите папку для начала", font=ui_component.FONTS['second'], text_color=ui_component.COLORS["text_muted"])
-    lbl_status.grid(row=4, column=0, pady=10)
-
 
     # ================= ЭКРАН 2: ЗАГРУЗКА И СООБЩЕНИЯ =================
-    message_frame = ctk.CTkFrame(main_container, fg_color="transparent")
-    lbl_message_big = ctk.CTkLabel(message_frame, text="", font=ui_component.FONTS['title'], text_color=ui_component.COLORS["text_muted"])
-    lbl_message_big.place(relx=0.5, rely=0.5, anchor="center") 
+    loading_view, update_loading = ui_component.process_screen(main_container, title="Ищу дубликаты", scan_mode="duplicates")
 
 
     # ================= ЭКРАН 3: РЕЗУЛЬТАТЫ И КНОПКИ =================
@@ -101,18 +96,17 @@ def create_dublicates_view(parent, app_state, show_error_callback):
     # --- ЛОГИКА ИНТЕРФЕЙСА ---    
     def switch_view(view_name):
         setup_frame.grid_remove()
-        message_frame.grid_remove()
+        loading_view.grid_remove()
         results_frame.grid_remove()
 
         if view_name == "setup":
             setup_frame.grid(row=0, column=0, sticky="nsew")
         elif view_name == "message":
-            message_frame.grid(row=0, column=0, sticky="nsew")
+            loading_view.grid(row=0, column=0)
         elif view_name == "results":
             results_frame.grid(row=0, column=0, sticky="nsew")
 
     def show_message(text):
-        lbl_message_big.configure(text=text)
         switch_view("message")
 
     switch_view("setup")
@@ -125,7 +119,6 @@ def create_dublicates_view(parent, app_state, show_error_callback):
         if folder:
             state["target_folder"] = folder
             lbl_folder.configure(text=os.path.basename(folder), text_color=ui_component.COLORS["text_main"])
-            lbl_status.configure(text="✅ Готово к сканированию", text_color=ui_component.COLORS["primary"])
 
 
     def render_results(duplicates, total_files):
@@ -180,12 +173,32 @@ def create_dublicates_view(parent, app_state, show_error_callback):
         """Запускает поиск дубликатов"""
         try:
             files = get_image_files(folder, recursive=app_state.get("search_recursive", False))
-            if not files: 
+            if not files:
                 view.after(0, lambda: show_message("Изображения не найдены"))
                 return view.after(2000, lambda: switch_view("setup"))
             
             total_files = len(files)
-            duplicates = find_duplicates(files, tolerance)
+
+            # Инициализируем прогресс-бар перед стартом
+            view.after(0, lambda: update_loading(f"0 / {total_files}", "0", 0.0))
+
+            # Thread-safe колбэк прогресса — вызывается из фонового потока
+            def on_progress(checked, total, found):
+                progress_value = checked / total if total > 0 else 0.0
+                view.after(0, lambda: update_loading(
+                    f"{checked} / {total_files}",
+                    str(found),
+                    progress_value
+                ))
+
+            duplicates = find_duplicates(files, tolerance, progress_callback=on_progress)
+
+            # Финальное обновление — 100%
+            view.after(0, lambda: update_loading(
+                f"{total_files} / {total_files}",
+                str(sum(len(g) - 1 for g in duplicates)),
+                1.0
+            ))
             
             def get_image_quality(file_path):
                 try:

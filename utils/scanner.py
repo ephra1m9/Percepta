@@ -15,12 +15,12 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Инициализируем OpenCV
-orb = cv2.ORB_create(nfeatures=1000)  # Уменьшено для скорости
+orb = cv2.ORB_create(nfeatures=800)
 bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
 
 # Глобальный кэш для данных изображений
 _image_data_cache = {}
-_use_multiprocessing = False  # Отключено для стабильности
+_use_multiprocessing = False
 _max_workers = max(1, cpu_count() - 1)
 
 
@@ -166,8 +166,6 @@ def compare_histograms(hist1, hist2):
         intersection_s = cv2.compareHist(hist1[1], hist2[1], cv2.HISTCMP_INTERSECT)
         intersection_v = cv2.compareHist(hist1[2], hist2[2], cv2.HISTCMP_INTERSECT)
         
-        # Нормализуем пересечение (оно может быть от 0 до 1 для каждой гистограммы)
-        # H канал более важен для идентификации
         similarity = (intersection_h * 0.5 + intersection_s * 0.3 + intersection_v * 0.2)
         
         return max(0.0, min(1.0, similarity))
@@ -181,14 +179,12 @@ def compare_ssim(img1, img2):
     Возвращает значение 0-1, где 1 = полное совпадение.
     """
     try:
-        # Ресайзим до одинакового размера если нужно
         h1, w1 = img1.shape[:2]
         h2, w2 = img2.shape[:2]
         
         if h1 != h2 or w1 != w2:
             img2 = cv2.resize(img2, (w1, h1))
         
-        # Конвертируем в градации серого
         if len(img1.shape) == 3:
             gray1 = cv2.cvtColor(img1, cv2.COLOR_RGB2GRAY)
         else:
@@ -235,7 +231,6 @@ def are_images_matching(des1, des2, min_matches=None, lowe_ratio=0.72, ratio_thr
             logger.debug(f"ORB пропущен: дескрипторов недостаточно. des1: {len(des1) if des1 is not None else 'None'}, des2: {len(des2) if des2 is not None else 'None'}")
         return False
     
-    # Динамический min_matches
     if min_matches is None:
         min_descriptors = min(len(des1), len(des2))
         min_matches = max(15, int(min_descriptors * 0.18))
@@ -265,20 +260,19 @@ def are_images_matching(des1, des2, min_matches=None, lowe_ratio=0.72, ratio_thr
         return False
 
 
-def find_reference_matches(reference_paths, search_paths, tolerance=15):
+def find_reference_matches(reference_paths, search_paths, tolerance=15, progress_callback=None):
     """
     Улучшенный поиск по эталону с параллельной обработкой.
+    progress_callback(checked, total, found) — вызывается после каждого эталона.
     """
     logger.info(f"Поиск по эталону: {len(reference_paths)} эталонов, {len(search_paths)} для поиска")
     
-    # Рассчитываем адаптивные пороги
     phash_tolerance = min(18, tolerance + 5)
     histogram_threshold = 0.65
     ssim_threshold = 0.85
     
     logger.info(f"Пороги: pHash<={phash_tolerance}, hist>={histogram_threshold}, SSIM>={ssim_threshold}")
     
-    # Параллельно вычисляем данные для всех файлов
     all_paths = list(set(reference_paths + search_paths))
     logger.info(f"Вычисление данных для {len(all_paths)} файлов...")
     all_data = get_all_image_data_parallel(all_paths)
@@ -286,10 +280,13 @@ def find_reference_matches(reference_paths, search_paths, tolerance=15):
     
     matches = []
     matched_search = set()
+    total_refs = len(reference_paths)
     
     # Обрабатываем эталонные файлы
-    for ref_path in reference_paths:
+    for i, ref_path in enumerate(reference_paths):
         if ref_path not in all_data:
+            if progress_callback:
+                progress_callback(i + 1, total_refs, len(matches))
             continue
         ref_data_list = all_data[ref_path]
         
@@ -313,6 +310,9 @@ def find_reference_matches(reference_paths, search_paths, tolerance=15):
                         matched_search.add(search_path)
                         logger.info(f"Совпадение: {os.path.basename(ref_path)} -> {os.path.basename(search_path)}")
                         break
+        
+        if progress_callback:
+            progress_callback(i + 1, total_refs, len(matches))
     
     logger.info(f"Найдено {len(matches)} совпадений")
     return matches
@@ -326,7 +326,7 @@ def check_images_match(ref_data, search_data, phash_tolerance, histogram_thresho
     match_count = 0
     match_reasons = []
     
-    # 1. Проверка pHash (самый быстрый и надёжный)
+    # 1. Проверка pHash
     min_hash_diff = 100
     for h1 in ref_data['hashes']:
         for h2 in search_data['hashes']:
@@ -388,7 +388,7 @@ def check_images_match(ref_data, search_data, phash_tolerance, histogram_thresho
             match_count += 1
             match_reasons.append("ORB")
     
-    # Требуем минимум 2 совпадения для точности
+    # минимум 2 совпадения для точности
     if match_count >= 2:
         logger.debug(f"Совпадение подтверждено ({match_count}): {', '.join(match_reasons)}")
         return True
@@ -396,14 +396,21 @@ def check_images_match(ref_data, search_data, phash_tolerance, histogram_thresho
     return False
 
 
-def find_duplicates(image_paths, tolerance=15):
-    """Поиск дубликатов по pHash"""
+def find_duplicates(image_paths, tolerance=15, progress_callback=None):
+    """Поиск дубликатов по pHash.
+    progress_callback(checked, total, found) — вызывается после каждого файла.
+    Прогресс: 0.0→1.0 по всем файлам (кэширование + сравнение).
+    """
     phash_tolerance = max(8, tolerance // 2)
     logger.info(f"Поиск дубликатов: {len(image_paths)} файлов, tolerance={phash_tolerance}")
     
-    # Кэшируем данные
-    for path in image_paths:
+    total = len(image_paths)
+
+    # Кэшируем данные — прогресс по реальным файлам (checked идёт от 1 до total)
+    for idx, path in enumerate(image_paths):
         get_image_data_cached(path)
+        if progress_callback:
+            progress_callback(idx + 1, total, 0)
     
     groups = []
     visited = set()
@@ -414,6 +421,7 @@ def find_duplicates(image_paths, tolerance=15):
             key = f"{data['path']}_{data['page']}"
             keys.append(key)
     
+    # Сравнение — прогресс остаётся на 1.0 (кэширование — самый долгий этап)
     for i, k1 in enumerate(keys):
         if k1 in visited:
             continue
@@ -445,8 +453,10 @@ def find_duplicates(image_paths, tolerance=15):
     return groups
 
 
-def find_originals(low_res_paths, high_res_paths, tolerance=20, phash_threshold=None, quality_ratio=None):
-    """Поиск оригиналов: гибридный подход pHash + ORB + проверка качества"""
+def find_originals(low_res_paths, high_res_paths, tolerance=20, phash_threshold=None, quality_ratio=None, progress_callback=None):
+    """Поиск оригиналов: гибридный подход pHash + ORB + проверка качества.
+    progress_callback(checked, total, found) — вызывается после каждого low-res файла.
+    """
     results = {'found': [], 'not_found': []}
     
     def clean_name(p):
@@ -463,6 +473,7 @@ def find_originals(low_res_paths, high_res_paths, tolerance=20, phash_threshold=
         quality_ratio = 1.2
     
     orb_min_matches = max(20, tolerance)
+    total_low = len(low_res_paths)
     
     # Предварительная индексация high-res файлов
     high_res_map = {}
@@ -472,7 +483,7 @@ def find_originals(low_res_paths, high_res_paths, tolerance=20, phash_threshold=
             high_res_map[name] = []
         high_res_map[name].append(p)
     
-    for lp in low_res_paths:
+    for idx, lp in enumerate(low_res_paths):
         l_data_list = get_image_data_cached(lp)
         if not l_data_list:
             results['not_found'].append(lp)
@@ -523,5 +534,8 @@ def find_originals(low_res_paths, high_res_paths, tolerance=20, phash_threshold=
         
         if not found:
             results['not_found'].append(lp)
+        
+        if progress_callback:
+            progress_callback(idx + 1, total_low, len(results['found']))
     
     return results

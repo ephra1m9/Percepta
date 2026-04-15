@@ -51,27 +51,25 @@ def create_originals_view(parent, app_state, show_error_callback):
     frame_low.grid(row=2, column=0, sticky="ew", pady=(20, 10))
     btn_low = ctk.CTkButton(frame_low, text="Папка с изображениями", image=icon_folder, font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
     btn_low.pack(side="left", padx=10, pady=10)
-    lbl_low = ctk.CTkLabel(frame_low, text="Сжатые или битые изображения", text_color=ui_component.COLORS["text_muted"], font=ui_component.FONTS['second'], anchor="e")
+    lbl_low = ctk.CTkLabel(frame_low, text="Сжатые или битые изображения", text_color=ui_component.COLORS["text_second"], font=ui_component.FONTS['second'], anchor="e")
     lbl_low.pack(side="left", padx=10, pady=10, fill="x", expand=True) 
 
     frame_server = ctk.CTkFrame(setup_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border'], corner_radius=10)
     frame_server.grid(row=3, column=0, sticky="ew", pady=(0, 20))
     btn_server = ctk.CTkButton(frame_server, text="Папка с исходниками", image=icon_folder, font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
     btn_server.pack(side="left", padx=10, pady=10)
-    lbl_server = ctk.CTkLabel(frame_server, text="Изображения в лучшем качестве", text_color=ui_component.COLORS["text_muted"], font=ui_component.FONTS['second'], anchor="e")
+    lbl_server = ctk.CTkLabel(frame_server, text="Изображения в лучшем качестве", text_color=ui_component.COLORS["text_second"], font=ui_component.FONTS['second'], anchor="e")
     lbl_server.pack(side="left", padx=10, pady=10, fill="x", expand=True)
 
     btn_start = ctk.CTkButton(setup_frame, image=icon_search, text="Найти оригиналы", font=ui_component.FONTS['main'], **ui_component.BUTTON_PRIMARY)
     btn_start.grid(row=4, column=0, sticky="ew")
 
-    lbl_status = ctk.CTkLabel(setup_frame, text="Выберите папки для начала", font=ui_component.FONTS['second'], text_color=ui_component.COLORS["text_muted"])
+    lbl_status = ctk.CTkLabel(setup_frame, text="Выберите папки для начала", font=ui_component.FONTS['second'], text_color=ui_component.COLORS["text_second"])
     lbl_status.grid(row=5, column=0, pady=10)
 
 
     # ================= ЭКРАН 2: ЗАГРУЗКА И СООБЩЕНИЯ =================
-    message_frame = ctk.CTkFrame(main_container, fg_color="transparent")
-    lbl_message_big = ctk.CTkLabel(message_frame, text="", font=ui_component.FONTS['title'], text_color=ui_component.COLORS["text_muted"])
-    lbl_message_big.place(relx=0.5, rely=0.5, anchor="center")
+    loading_view, update_loading = ui_component.process_screen(main_container, title="Ищу оригиналы", scan_mode="originals")
 
 
     # ================= ЭКРАН 3: РЕЗУЛЬТАТЫ И КАРТОЧКИ =================
@@ -122,18 +120,17 @@ def create_originals_view(parent, app_state, show_error_callback):
     # --- ЛОГИКА ИНТЕРФЕЙСА ---
     def switch_view(view_name):
         setup_frame.grid_remove()
-        message_frame.grid_remove()
+        loading_view.grid_remove()
         results_frame.grid_remove()
 
         if view_name == "setup":
             setup_frame.grid(row=0, column=0, sticky="nsew")
         elif view_name == "message":
-            message_frame.grid(row=0, column=0, sticky="nsew")
+            loading_view.grid(row=0, column=0)
         elif view_name == "results":
             results_frame.grid(row=0, column=0, sticky="nsew")
 
     def show_message(text):
-        lbl_message_big.configure(text=text)
         switch_view("message")
 
     switch_view("setup")
@@ -160,7 +157,7 @@ def create_originals_view(parent, app_state, show_error_callback):
         if state["target_low"] and state["target_server"]:
             lbl_status.configure(text="Готово к сканированию", text_color=ui_component.COLORS["primary"])
         else:
-            lbl_status.configure(text="Выберите папки для начала", text_color=ui_component.COLORS["text_muted"])
+            lbl_status.configure(text="Выберите папки для начала", text_color=ui_component.COLORS["text_second"])
 
 
     def render_results(results, total_low):
@@ -330,6 +327,20 @@ def create_originals_view(parent, app_state, show_error_callback):
                 view.after(0, lambda: show_message("В папке с оригиналами пусто"))
                 return view.after(2000, lambda: switch_view("setup"))
 
+            total_low = len(low_files)
+
+            # Инициализируем прогресс-бар перед стартом
+            view.after(0, lambda: update_loading(f"0 / {total_low}", "0", 0.0))
+
+            # Thread-safe колбэк прогресса — вызывается из фонового потока
+            def on_progress(checked, total, found):
+                progress_value = checked / total if total > 0 else 0.0
+                view.after(0, lambda: update_loading(
+                    f"{checked} / {total_low}",
+                    str(found),
+                    progress_value
+                ))
+
             # Получаем дополнительные параметры из app_state
             phash_threshold = app_state.get('phash_threshold', 10)
             quality_ratio = app_state.get('quality_ratio', 1.2)
@@ -339,8 +350,16 @@ def create_originals_view(parent, app_state, show_error_callback):
                 sources_files,
                 tolerance=tolerance,
                 phash_threshold=phash_threshold,
-                quality_ratio=quality_ratio
+                quality_ratio=quality_ratio,
+                progress_callback=on_progress
             )
+
+            # Финальное обновление — 100%
+            view.after(0, lambda: update_loading(
+                f"{total_low} / {total_low}",
+                str(len(results['found'])),
+                1.0
+            ))
             
             state["found_files"] = results['found']
             view.after(0, lambda: render_results(results, len(low_files)))

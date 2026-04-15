@@ -3,34 +3,35 @@ import textwrap
 
 
 COLORS = {
-    "bg_app": "#F1F1F1",
+    "bg_app": "#F9FAFB",
     "bg_surface": "#FFFFFF",
     "bg_input": "#EFF3F8",
+    
+    "info_bg": "#DBEAFE",
+    "info_text": "#1E40AF",
 
-    "border": "#E2E8F0",
-    "border_dark": "#CDD6E4",
+    "border": "#E5E7EB",
+    "border_dark": "#D1D5DB",
 
-    "text_main": "#212121",
-    "text_second": "#424242",
-    "text_muted": "#616161",
+    "text_main": "#111827",
+    "text_second": "#4B5563",
     "text_light": "#FFFFFF",
 
-    "primary": "#2C2C2C",
-    "primary_hover": "#1E4A6E",
-    "primary_light": "#C2BDE0",
+    "primary": "#6366F1",
+    "primary_hover": "#4F46E5",
+    "primary_light": "#E0E7FF",
 
-    "primary_btn": "#000000",
-    "primary_btn_hover": "#1A1A1A",
+    "hover_gray": "#F3F4F6",
 
-    "success": "#1B7B4B",
-    "error": "#C23D3D",
+    "success": "#10B981",
+    "error": "#EF4444",
     "danger": "#E87A2A",
 }
 
 
 FONTS = {
-    "title": ("Montserrat", 26, "bold"),
-    "subtitle": ("Rubik", 20, "bold"),
+    "title": ("Montserrat", 28, "bold"),
+    "subtitle": ("Montserrat SemiBold", 22),
     "main": ("Rubik", 16),
     "second": ("Rubik Light", 15),
     "second_btn": ("Rubik", 15)
@@ -40,8 +41,8 @@ FONTS = {
 BUTTON_PRIMARY = {
     "height": 40,
     "corner_radius": 25,
-    "fg_color": COLORS["primary_btn"],
-    "hover_color": COLORS["primary_btn_hover"],
+    "fg_color": COLORS["primary"],
+    "hover_color": COLORS["primary_hover"],
     "text_color": COLORS["text_light"]
 }
 
@@ -49,8 +50,8 @@ BUTTON_PRIMARY = {
 BUTTON_PRIMARY_MIN = {
     "height": 30,
     "corner_radius": 10,
-    "fg_color": COLORS["primary_btn"],
-    "hover_color": COLORS["primary_btn_hover"],
+    "fg_color": COLORS["primary"],
+    "hover_color": COLORS["primary_hover"],
     "text_color": COLORS["text_light"]
 }
 
@@ -59,7 +60,7 @@ BUTTON_SECONDARY = {
     "height": 30,
     "corner_radius": 10,
     "fg_color": "transparent",
-    "hover_color": COLORS["primary_light"],
+    "hover_color": COLORS["hover_gray"],
     "text_color": COLORS["text_main"],
     "border_width": 1,
     "border_color": COLORS["border_dark"]
@@ -101,7 +102,7 @@ class CTkAdaptiveLabel(ctk.CTkLabel):
 
 def title(view, text: str):
     """Основной заголовок"""
-    return ctk.CTkLabel(view, text=text, font=FONTS['title'], text_color=COLORS['text_second']).grid(row=0, column=0, sticky="w", pady=(0, 20))
+    return ctk.CTkLabel(view, text=text, font=FONTS['title'], text_color=COLORS['text_main']).grid(row=0, column=0, sticky="w", pady=(0, 20))
 
 
 def subtitle(view, text: str):
@@ -111,7 +112,7 @@ def subtitle(view, text: str):
 
 def description(view, text: str):
     """Описание для функции программы"""
-    desc_frame = ctk.CTkFrame(view, fg_color=COLORS["bg_input"], corner_radius=8)
+    desc_frame = ctk.CTkFrame(view, fg_color=COLORS["bg_input"], corner_radius=10)
     desc_frame.grid(row=1, column=0, pady=(0, 30), sticky="ew")
     
     lbl_desc = CTkAdaptiveLabel(
@@ -172,7 +173,7 @@ def result_action_btn(parent, btn_text: str, desc_text: str, icon_name):
     CTkAdaptiveLabel(
         card, 
         text=desc_text, 
-        text_color=COLORS["text_muted"],
+        text_color=COLORS["text_second"],
         font=FONTS['second'],
         justify="left",
         anchor="w"
@@ -189,3 +190,64 @@ def hr_grid(view, row, pady=20):
 def hr_pack(view, pady=20):
     """Горизонтальная линия (hr) в pack"""
     ctk.CTkFrame(view, height=2, fg_color=COLORS["border"]).pack(fill="x", pady=pady)
+
+
+def process_screen(parent, title: str, scan_mode: str):
+    """Окно с информацией о процессе поиска"""
+    found_labels = {
+        "reference": "Найдено изображений:",
+        "originals": "Найдено оригиналов:",
+        "duplicates": "Найдено дубликатов:"
+    }
+
+    main_view = ctk.CTkFrame(parent, fg_color="transparent", border_width=1, border_color=COLORS["border"], corner_radius=10)
+    main_view.grid_rowconfigure(0, weight=1)
+    main_view.grid_columnconfigure(0, weight=1)
+
+    main_container = ctk.CTkFrame(main_view, fg_color="transparent")
+    main_container.pack(expand=True, fill="both", padx=20, pady=20)
+
+    main_container.grid_columnconfigure(0, weight=1)
+    main_container.grid_columnconfigure(1, weight=2)
+    main_container.grid_columnconfigure(2, weight=1)
+
+    header_frame = ctk.CTkFrame(main_container, fg_color="transparent")
+    header_frame.grid(row=0, column=0, sticky="w", pady=(0, 10))
+
+    lbl_title = ctk.CTkLabel(header_frame, text=title, font=FONTS["subtitle"], text_color=COLORS["text_main"])
+    lbl_title.grid(row=0, column=0)
+
+    progress_bar_frame = ctk.CTkFrame(main_container, fg_color="transparent", border_width=1, border_color=COLORS["border"], corner_radius=5)
+    progress_bar_frame.grid(row=1, column=0, sticky="we", pady=(0, 10))
+
+    progress_bar = ctk.CTkProgressBar(progress_bar_frame, width=400, progress_color=COLORS["primary"], fg_color=COLORS["hover_gray"])
+    progress_bar.grid(row=1, column=0, sticky="we", padx=5, pady=5)
+
+    info_frame = ctk.CTkFrame(main_container, fg_color="transparent")
+    info_frame.grid(row=2, column=0, sticky="ew")
+
+    info_frame.grid_columnconfigure(0, weight=1)
+    info_frame.grid_columnconfigure(1, weight=1)
+
+    lbl_checked_images = ctk.CTkLabel(info_frame, text="Проверено изображений:", font=FONTS["second"], text_color=COLORS["text_second"])
+    lbl_checked_images.grid(row=0, column=0, sticky="w")
+
+    lbl_images_checked_count = ctk.CTkLabel(info_frame, text="0/0", font=FONTS["second"], text_color=COLORS["text_second"])
+    lbl_images_checked_count.grid(row=0, column=1, sticky="e")
+
+    lbl_images_found = ctk.CTkLabel(info_frame, text=found_labels.get(scan_mode, "Найдено:"), font=FONTS["second"], text_color=COLORS["text_second"])
+    lbl_images_found.grid(row=1, column=0, sticky="w")
+
+    lbl_images_found_count = ctk.CTkLabel(info_frame, text="0", font=FONTS["second"], text_color=COLORS["text_second"])
+    lbl_images_found_count.grid(row=1, column=1, sticky="e")
+
+    def update_status(checked_count, find_count, progress_value=None):
+        lbl_images_checked_count.configure(text=checked_count)
+        lbl_images_found_count.configure(text=find_count)
+
+        if progress_value is not None:
+            progress_bar.set(progress_value)
+
+        main_container.update_idletasks()
+
+    return main_view, update_status

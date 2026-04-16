@@ -29,7 +29,8 @@ def create_dublicates_view(parent, app_state, show_error_callback):
 
     # Иконки
     icon_folder = parent.create_font_icon("\uF3D1", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
-    icon_search = parent.create_font_icon("\uF52A", parent.icon_path, size=16, color=ui_component.COLORS["text_light"])
+    icon_search = parent.create_font_icon("\uF52A", parent.icon_path, size=16, color=ui_component.COLORS["text_second"])
+    icon_search_active = parent.create_font_icon("\uF52A", parent.icon_path, size=16, color=ui_component.COLORS["text_light"])
     icon_move = parent.create_font_icon("\uF3D4", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
     icon_delete = parent.create_font_icon("\uF5DD", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
     icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=15, color=ui_component.COLORS["danger"])
@@ -49,7 +50,7 @@ def create_dublicates_view(parent, app_state, show_error_callback):
     lbl_folder = ctk.CTkLabel(frame_folder, text="Не выбрано", text_color=ui_component.COLORS["text_second"], font=ui_component.FONTS['second'], anchor="e")
     lbl_folder.pack(side="left", fill="x", expand=True, padx=10, pady=10)
 
-    btn_start = ctk.CTkButton(setup_frame, image=icon_search, text="Начать поиск", font=ui_component.FONTS['main'], **ui_component.BUTTON_PRIMARY)
+    btn_start = ctk.CTkButton(setup_frame, image=icon_search, text="Начать поиск", font=ui_component.FONTS['main'], state="disabled", **ui_component.BUTTON_PRIMARY_DISABLED)
     btn_start.grid(row=3, column=0, sticky="ew")
 
 
@@ -119,6 +120,7 @@ def create_dublicates_view(parent, app_state, show_error_callback):
         if folder:
             state["target_folder"] = folder
             lbl_folder.configure(text=os.path.basename(folder), text_color=ui_component.COLORS["text_main"])
+            btn_start.configure(state="normal", image=icon_search_active, **ui_component.BUTTON_PRIMARY)
 
 
     def render_results(duplicates, total_files):
@@ -171,7 +173,7 @@ def create_dublicates_view(parent, app_state, show_error_callback):
 
     def run_scan(folder, tolerance):
         """Запускает поиск дубликатов"""
-        try:
+        try:            
             files = get_image_files(folder, recursive=app_state.get("search_recursive", False))
             if not files:
                 view.after(0, lambda: show_message("Изображения не найдены"))

@@ -24,13 +24,14 @@ def create_originals_view(parent, app_state, show_error_callback):
 
     state = {
         "target_low": "",
-        "target_server": "",
+        "target_originals": "",
         "found_files": []
     }
 
     # Иконки
     icon_folder = parent.create_font_icon("\uF3D1", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
-    icon_search = parent.create_font_icon("\uF52A", parent.icon_path, size=16, color=ui_component.COLORS["text_light"])
+    icon_search = parent.create_font_icon("\uF52A", parent.icon_path, size=16, color=ui_component.COLORS["text_second"])
+    icon_search_active = parent.create_font_icon("\uF52A", parent.icon_path, size=16, color=ui_component.COLORS["text_light"])
     icon_copy_folder = parent.create_font_icon("\uF721", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
     icon_copy = parent.create_font_icon("\uF759", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
     icon_replace = parent.create_font_icon("\uF51D", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
@@ -61,11 +62,8 @@ def create_originals_view(parent, app_state, show_error_callback):
     lbl_server = ctk.CTkLabel(frame_server, text="Изображения в лучшем качестве", text_color=ui_component.COLORS["text_second"], font=ui_component.FONTS['second'], anchor="e")
     lbl_server.pack(side="left", padx=10, pady=10, fill="x", expand=True)
 
-    btn_start = ctk.CTkButton(setup_frame, image=icon_search, text="Найти оригиналы", font=ui_component.FONTS['main'], **ui_component.BUTTON_PRIMARY)
+    btn_start = ctk.CTkButton(setup_frame, image=icon_search, text="Найти оригиналы", font=ui_component.FONTS['main'], state="disabled", **ui_component.BUTTON_PRIMARY_DISABLED)
     btn_start.grid(row=4, column=0, sticky="ew")
-
-    lbl_status = ctk.CTkLabel(setup_frame, text="Выберите папки для начала", font=ui_component.FONTS['second'], text_color=ui_component.COLORS["text_second"])
-    lbl_status.grid(row=5, column=0, pady=10)
 
 
     # ================= ЭКРАН 2: ЗАГРУЗКА И СООБЩЕНИЯ =================
@@ -138,26 +136,27 @@ def create_originals_view(parent, app_state, show_error_callback):
 
     # --- ЛОГИКА РАБОТЫ ---
     def select_low():
+        """Выбор начальной папки"""
         folder = filedialog.askdirectory()
         if folder:
             state["target_low"] = folder
             lbl_low.configure(text=os.path.basename(folder) or folder, text_color=ui_component.COLORS['text_main'])
-            check_ready()
+            btn_state()
 
 
-    def select_server():
+    def select_originals():
+        """Выбор папки с исходниками"""
         folder = filedialog.askdirectory()
         if folder:
-            state["target_server"] = folder
+            state["target_originals"] = folder
             lbl_server.configure(text=os.path.basename(folder) or folder, text_color=ui_component.COLORS['text_main'])
-            check_ready()
+            btn_state()
 
 
-    def check_ready():
-        if state["target_low"] and state["target_server"]:
-            lbl_status.configure(text="Готово к сканированию", text_color=ui_component.COLORS["primary"])
-        else:
-            lbl_status.configure(text="Выберите папки для начала", text_color=ui_component.COLORS["text_second"])
+    def btn_state():
+        """Переключатель для состояния кнопки поиска"""
+        if state["target_low"] and state["target_originals"]:
+            btn_start.configure(state="normal", image=icon_search_active, **ui_component.BUTTON_PRIMARY)
 
 
     def render_results(results, total_low):
@@ -372,8 +371,8 @@ def create_originals_view(parent, app_state, show_error_callback):
 
     # Привязки
     btn_low.configure(command=select_low)
-    btn_server.configure(command=select_server)
+    btn_server.configure(command=select_originals)
     btn_back.configure(command=lambda: switch_view("setup"))
-    btn_start.configure(command=lambda: (btn_start.configure(state="disabled"), show_message("Сравнение файлов..."), threading.Thread(target=run_scan, args=(state["target_low"], state["target_server"], app_state["tolerance"])).start()))
+    btn_start.configure(command=lambda: (btn_start.configure(state="disabled"), show_message("Сравнение файлов..."), threading.Thread(target=run_scan, args=(state["target_low"], state["target_originals"], app_state["tolerance"])).start()))
 
     return view

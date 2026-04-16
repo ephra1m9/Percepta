@@ -37,7 +37,8 @@ def create_reference_view(parent, app_state, show_error_callback):
     icon_folder = parent.create_font_icon("\uF3D1", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
     icon_add = parent.create_font_icon("\uF4F9", parent.icon_path, size=15, color=ui_component.COLORS["text_main"]) 
     icon_clear = parent.create_font_icon("\uF5DD", parent.icon_path, size=15, color="#E74C3C") 
-    icon_search = parent.create_font_icon("\uF52A", parent.icon_path, size=16, color=ui_component.COLORS["text_light"])
+    icon_search = parent.create_font_icon("\uF52A", parent.icon_path, size=16, color=ui_component.COLORS["text_second"])
+    icon_search_active = parent.create_font_icon("\uF52A", parent.icon_path, size=16, color=ui_component.COLORS["text_light"])
     icon_copy = parent.create_font_icon("\uF2E1", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
     icon_delete = parent.create_font_icon("\uF5DD", parent.icon_path, size=15, color=ui_component.COLORS["text_main"])
     icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=15, color="#E74C3C")
@@ -70,7 +71,7 @@ def create_reference_view(parent, app_state, show_error_callback):
     listbox = ctk.CTkTextbox(setup_frame, height=120, state="disabled", font=ui_component.FONTS['second'], fg_color=ui_component.COLORS["bg_input"], text_color=ui_component.COLORS["text_main"], border_width=0, corner_radius=10)
     listbox.grid(row=4, column=0, sticky="nsew", pady=(0, 20))
 
-    btn_start = ctk.CTkButton(setup_frame, image=icon_search, text="Начать поиск", font=ui_component.FONTS['main'], **ui_component.BUTTON_PRIMARY)
+    btn_start = ctk.CTkButton(setup_frame, image=icon_search, text="Начать поиск", font=ui_component.FONTS['main'], state="disabled", **ui_component.BUTTON_PRIMARY_DISABLED)
     btn_start.grid(row=5, column=0, sticky="ew")
 
 
@@ -136,13 +137,16 @@ def create_reference_view(parent, app_state, show_error_callback):
 
     # --- ЛОГИКА РАБОТЫ ---
     def set_reference_folder():
+        """Выбор начальной папки"""
         folder = filedialog.askdirectory()
         if folder:
             state["reference_folder"] = folder
             lbl_ref.configure(text=os.path.basename(folder), text_color=ui_component.COLORS["text_main"])
+            btn_state()
 
 
     def update_list():
+        """Обновляет список папок для поиска"""
         listbox.configure(state="normal")
         listbox.delete("1.0", "end")
         if not state["target_folders"]:
@@ -154,15 +158,26 @@ def create_reference_view(parent, app_state, show_error_callback):
 
 
     def add_search_folder():
+        """Выбор папки для поиска"""
         folder = filedialog.askdirectory()
         if folder and folder not in state["target_folders"]:
             state["target_folders"].append(folder)
             update_list()
+            btn_state()
 
 
     def clear_folders():
+        """Очищает список папок для поиска"""
         state["target_folders"].clear()
         update_list()
+        btn_state()
+
+
+    def btn_state():
+        if state["reference_folder"] and state["target_folders"]:
+            btn_start.configure(state="normal", image=icon_search_active, **ui_component.BUTTON_PRIMARY)
+        else:
+            btn_start.configure(state="disabled", image=icon_search, **ui_component.BUTTON_PRIMARY_DISABLED)
 
 
     def render_results(duplicates, total_files):

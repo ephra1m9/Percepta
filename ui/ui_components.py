@@ -57,6 +57,14 @@ BUTTON_PRIMARY = {
 }
 
 
+BUTTON_PRIMARY_DISABLED = {
+    "height": 40,
+    "corner_radius": 25,
+    "fg_color": COLORS["bg_input"],
+    "text_color_disabled": COLORS["text_second"]
+}
+
+
 BUTTON_PRIMARY_MIN = {
     "height": 30,
     "corner_radius": 10,

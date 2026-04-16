@@ -38,6 +38,16 @@ FONTS = {
 }
 
 
+BUTTON_SIDEBAR = {
+    "height": 40,
+    "fg_color": "transparent",
+    "font": FONTS["main"],
+    "text_color": COLORS["text_main"],
+    "hover_color": COLORS["hover_gray"],
+    "anchor": "w"
+}
+
+
 BUTTON_PRIMARY = {
     "height": 40,
     "corner_radius": 25,
@@ -58,7 +68,7 @@ BUTTON_PRIMARY_MIN = {
 
 BUTTON_SECONDARY = {
     "height": 30,
-    "corner_radius": 10,
+    "corner_radius": 8,
     "fg_color": "transparent",
     "hover_color": COLORS["hover_gray"],
     "text_color": COLORS["text_main"],
@@ -69,7 +79,7 @@ BUTTON_SECONDARY = {
 
 BUTTON_SECONDARY_DANGER = {
     "height": 30,
-    "corner_radius": 10,
+    "corner_radius": 8,
     "fg_color": "transparent",
     "hover_color": '#FDEDEC',
     "text_color": COLORS["error"],

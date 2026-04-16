@@ -106,28 +106,24 @@ def main():
     ctk.CTkLabel(sidebar_frame, text="Percepta", font=ui_component.FONTS['title'], text_color=ui_component.COLORS["primary"]).grid(row=0, column=0, pady=(40, 40))
 
     # Иконки
-    icon_single = create_font_icon("\uF42B", icon_path, size=16, color="#333333")
-    icon_multi = create_font_icon("\uF5A9", icon_path, size=16, color="#333333")
-    icon_originals = create_font_icon("\uF787", icon_path, size=16, color="#333333")
-    icon_settings = create_font_icon("\uF3E5", icon_path, size=16, color="#333333")
-
-    nav_buttons = {}
-    btn_params = {
-        "font": ui_component.FONTS['main'], "height": 40, "fg_color": "transparent",
-        "text_color": "gray20", "hover_color": ui_component.COLORS["bg_app"], "anchor": "w"
-    }
+    icon_single = create_font_icon("\uF42B", icon_path, size=16, color=ui_component.COLORS["text_main"])
+    icon_multi = create_font_icon("\uF5A9", icon_path, size=16, color=ui_component.COLORS["text_main"])
+    icon_originals = create_font_icon("\uF787", icon_path, size=16, color=ui_component.COLORS["text_main"])
+    icon_settings = create_font_icon("\uF3E5", icon_path, size=16, color=ui_component.COLORS["text_main"])
 
     # Кнопки
-    nav_buttons["single"] = ctk.CTkButton(sidebar_frame, text="  Поиск дубликатов", image=icon_single, **btn_params)
+    nav_buttons = {}
+
+    nav_buttons["single"] = ctk.CTkButton(sidebar_frame, text="  Поиск дубликатов", image=icon_single, **ui_component.BUTTON_SIDEBAR)
     nav_buttons["single"].grid(row=1, column=0, padx=20, pady=5, sticky="ew")
 
-    nav_buttons["multi"] = ctk.CTkButton(sidebar_frame, text="  Поиск по эталону", image=icon_multi, **btn_params)
+    nav_buttons["multi"] = ctk.CTkButton(sidebar_frame, text="  Поиск по эталону", image=icon_multi, **ui_component.BUTTON_SIDEBAR)
     nav_buttons["multi"].grid(row=2, column=0, padx=20, pady=5, sticky="ew")
 
-    nav_buttons["originals"] = ctk.CTkButton(sidebar_frame, text="  Поиск оригиналов", image=icon_originals, **btn_params)
+    nav_buttons["originals"] = ctk.CTkButton(sidebar_frame, text="  Поиск оригиналов", image=icon_originals, **ui_component.BUTTON_SIDEBAR)
     nav_buttons["originals"].grid(row=3, column=0, padx=20, pady=5, sticky="ew")
 
-    nav_buttons["settings"] = ctk.CTkButton(sidebar_frame, text="  Настройки", image=icon_settings, **btn_params)
+    nav_buttons["settings"] = ctk.CTkButton(sidebar_frame, text="  Настройки", image=icon_settings, **ui_component.BUTTON_SIDEBAR)
     nav_buttons["settings"].grid(row=7, column=0, padx=20, sticky="ew")
 
     ui_component.hr_grid(sidebar_frame, row=8, pady=20)
@@ -154,8 +150,8 @@ def main():
         for view in views.values():
             view.grid_forget()
 
-        nav_buttons[name].configure(fg_color=ui_component.COLORS.get("primary_light", "lightblue"), text_color=ui_component.COLORS["primary"])
-        views[name].grid(row=0, column=1, sticky="nsew", padx=(30, 0), pady=30)
+        nav_buttons[name].configure(fg_color=ui_component.COLORS.get("primary_light", "lightblue"))
+        views[name].grid(row=0, column=1, sticky="nsew", padx=30, pady=30)
 
     # Прявязка событий к кнопкам
     nav_buttons["single"].configure(command=lambda: select_frame_by_name("single"))

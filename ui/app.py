@@ -87,7 +87,7 @@ def main():
     app_state = {
         "tolerance": 7,
         "search_recursive": 0,
-        "phash_threshold": 10,
+        "phash_threshold": 25,
         "quality_ratio": 1.2
     }
     icon_path = load_fonts()

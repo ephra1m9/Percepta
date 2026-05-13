@@ -98,7 +98,10 @@ def get_image_data(path):
                 page = doc.load_page(page_num)
                 pix = page.get_pixmap(dpi=72)
                 img_pil = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-                results.append(process_image_logic(img_pil, path, file_size, page_num + 1))
+                # Реальное разрешение страницы при 300 dpi (для корректного сравнения качества)
+                rect = page.rect
+                native_pixels = int(rect.width * 300 / 72) * int(rect.height * 300 / 72)
+                results.append(process_image_logic(img_pil, path, file_size, page_num + 1, native_pixels))
             doc.close()
         else:
             with Image.open(path) as img:
@@ -111,8 +114,11 @@ def get_image_data(path):
     return results
 
 
-def process_image_logic(img_pil, path, file_size, page_num):
-    """Ядро анализа изображения"""
+def process_image_logic(img_pil, path, file_size, page_num, native_pixels=None):
+    """Ядро анализа изображения.
+    native_pixels — реальное разрешение страницы PDF при 300 dpi.
+    Для обычных изображений совпадает с pixels.
+    """
     # pHash для разных углов
     hashes = get_hashes_with_rotations(img_pil)
     
@@ -139,6 +145,16 @@ def process_image_logic(img_pil, path, file_size, page_num):
     
     kp, des = orb.detectAndCompute(img_cv, None)
     
+    # ORB дескрипторы для всех 4 поворотов — инвариантность к ориентации скана
+    descriptors_rotated = [des]  # 0° уже вычислен
+    for angle in [90, 180, 270]:
+        rotated_pil = img_mini.rotate(angle, expand=True)
+        rotated_cv = cv2.cvtColor(np.array(rotated_pil), cv2.COLOR_RGB2GRAY)
+        _, des_rot = orb.detectAndCompute(rotated_cv, None)
+        descriptors_rotated.append(des_rot)
+    
+    actual_pixels = img_pil.width * img_pil.height
+    
     return {
         'path': path,
         'hashes': hashes,
@@ -146,7 +162,13 @@ def process_image_logic(img_pil, path, file_size, page_num):
         'dhash': dhash,
         'histograms': histograms,
         'descriptors': des,
-        'pixels': img_pil.width * img_pil.height,
+        # descriptors_rotated: список дескрипторов для 0°/90°/180°/270°
+        # используется в find_originals() для инвариантного к повороту ORB-сравнения
+        'descriptors_rotated': descriptors_rotated,
+        'pixels': actual_pixels,
+        # native_pixels: для PDF — реальное разрешение при 300 dpi,
+        # для обычных изображений — совпадает с pixels
+        'native_pixels': native_pixels if native_pixels is not None else actual_pixels,
         'size': file_size,
         'page': page_num
     }
@@ -318,6 +340,35 @@ def find_reference_matches(reference_paths, search_paths, tolerance=15, progress
     return matches
 
 
+def load_image_for_ssim(path, page):
+    """
+    Загружает изображение для вычисления SSIM.
+    Для PDF использует fitz для рендеринга нужной страницы.
+    Для обычных изображений использует PIL.
+    Возвращает numpy array в RGB или None при ошибке.
+    """
+    try:
+        ext = os.path.splitext(path)[1].lower()
+        if ext == '.pdf' and page is not None:
+            doc = fitz.open(path)
+            page_index = page - 1  # page хранится как 1-based
+            if page_index < 0 or page_index >= len(doc):
+                doc.close()
+                return None
+            pix = doc.load_page(page_index).get_pixmap(dpi=72)
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            doc.close()
+            return np.array(img)
+        else:
+            with Image.open(path) as img:
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                return np.array(img)
+    except Exception as e:
+        logger.debug(f"load_image_for_ssim ошибка ({path}, page={page}): {e}")
+        return None
+
+
 def check_images_match(ref_data, search_data, phash_tolerance, histogram_threshold, ssim_threshold):
     """
     Проверка совпадения двух изображений с использованием всех методов.
@@ -350,26 +401,14 @@ def check_images_match(ref_data, search_data, phash_tolerance, histogram_thresho
         match_count += 1
         match_reasons.append(f"hist:{hist_similarity:.2f}")
     
-    # 4. Проверка SSIM
-    try:
-        img1 = Image.open(ref_data['path'])
-        if img1.mode != 'RGB':
-            img1 = img1.convert('RGB')
-        img1_np = np.array(img1)
-        img1.close()
-        
-        img2 = Image.open(search_data['path'])
-        if img2.mode != 'RGB':
-            img2 = img2.convert('RGB')
-        img2_np = np.array(img2)
-        img2.close()
-        
+    # 4. Проверка SSIM — с поддержкой PDF через fitz
+    img1_np = load_image_for_ssim(ref_data['path'], ref_data.get('page'))
+    img2_np = load_image_for_ssim(search_data['path'], search_data.get('page'))
+    if img1_np is not None and img2_np is not None:
         ssim_score = compare_ssim(img1_np, img2_np)
         if ssim_score >= ssim_threshold:
             match_count += 1
             match_reasons.append(f"SSIM:{ssim_score:.2f}")
-    except Exception:
-        pass
     
     # 5. Проверка ORB (ослаблен для кадрированных)
     des1 = ref_data['descriptors']
@@ -413,42 +452,49 @@ def find_duplicates(image_paths, tolerance=15, progress_callback=None):
             progress_callback(idx + 1, total, 0)
     
     groups = []
+    # visited хранит уникальный идентификатор страницы/изображения: (path, page)
     visited = set()
-    
-    keys = []
+
+    # Собираем плоский список объектов data — каждая страница PDF как отдельный элемент
+    all_data_items = []
     for path in image_paths:
-        for data in get_image_data_cached(path):
-            key = f"{data['path']}_{data['page']}"
-            keys.append(key)
-    
+        cached = get_image_data_cached(path)
+        if cached:
+            all_data_items.extend(cached)
+
     # Сравнение — прогресс остаётся на 1.0 (кэширование — самый долгий этап)
-    for i, k1 in enumerate(keys):
-        if k1 in visited:
+    for i, d1 in enumerate(all_data_items):
+        item_id1 = (d1['path'], d1['page'])
+        if item_id1 in visited:
             continue
-            
-        group = [_image_data_cache[k1]['path']]
-        
-        for k2 in keys[i+1:]:
-            if k2 in visited:
+
+        group = [d1['path']]
+
+        for d2 in all_data_items[i + 1:]:
+            item_id2 = (d2['path'], d2['page'])
+            if item_id2 in visited:
                 continue
-            
-            # Сравниваем хеши
+
+            # Сравниваем pHash
             min_hash_diff = 100
-            for h1 in _image_data_cache[k1]['hashes']:
-                for h2 in _image_data_cache[k2]['hashes']:
+            for h1 in d1['hashes']:
+                for h2 in d2['hashes']:
                     diff = h1 - h2
                     if diff < min_hash_diff:
                         min_hash_diff = diff
-            
+
             if min_hash_diff <= phash_tolerance:
-                group.append(_image_data_cache[k2]['path'])
-                visited.add(k2)
-                logger.debug(f"Дубликат: {os.path.basename(_image_data_cache[k1]['path'])} <-> {os.path.basename(_image_data_cache[k2]['path'])} diff={min_hash_diff}")
-        
+                group.append(d2['path'])
+                visited.add(item_id2)
+                logger.debug(
+                    f"Дубликат: {os.path.basename(d1['path'])} (стр.{d1['page']}) "
+                    f"<-> {os.path.basename(d2['path'])} (стр.{d2['page']}) diff={min_hash_diff}"
+                )
+
         if len(group) > 1:
             groups.append(group)
             logger.info(f"Группа дубликатов: {len(group)} файлов")
-    
+
     logger.info(f"Итог: {len(groups)} групп")
     return groups
 
@@ -468,7 +514,7 @@ def find_originals(low_res_paths, high_res_paths, tolerance=20, phash_threshold=
         get_image_data_cached(p)
     
     if phash_threshold is None:
-        phash_threshold = 12
+        phash_threshold = 25
     if quality_ratio is None:
         quality_ratio = 1.2
     
@@ -489,7 +535,6 @@ def find_originals(low_res_paths, high_res_paths, tolerance=20, phash_threshold=
             results['not_found'].append(lp)
             continue
         
-        l_data = l_data_list[0]
         found = False
         name = clean_name(lp)
         
@@ -500,37 +545,78 @@ def find_originals(low_res_paths, high_res_paths, tolerance=20, phash_threshold=
         else:
             candidates = high_res_paths
         
-        for hp in candidates:
-            for h_data in get_image_data_cached(hp):
-                # Проверка pHash
-                phash_match = any(
-                    h1 - h2 <= phash_threshold
-                    for h1 in l_data['hashes']
-                    for h2 in h_data['hashes']
-                )
-                
-                if not phash_match:
-                    continue
-                
-                # Проверка ORB
-                if not are_images_matching(
-                    l_data['descriptors'],
-                    h_data['descriptors'],
-                    min_matches=orb_min_matches
-                ):
-                    continue
-                
-                # Проверка качества
-                size_ok = h_data['size'] >= l_data['size'] * quality_ratio
-                resolution_ok = h_data['pixels'] >= l_data['pixels'] * quality_ratio
-                
-                if size_ok or resolution_ok:
-                    results['found'].append((lp, h_data['path'], h_data['page']))
-                    found = True
-                    break
-            
+        # Итерируем по всем страницам low-res файла (для PDF — каждая страница)
+        for l_data in l_data_list:
             if found:
                 break
+            
+            for hp in candidates:
+                if found:
+                    break
+                
+                for h_data in get_image_data_cached(hp):
+                    # 1. Проверка pHash (с учётом поворотов 0°/90°/180°/270°)
+                    min_phash_diff = min(
+                        h1 - h2
+                        for h1 in l_data['hashes']
+                        for h2 in h_data['hashes']
+                    )
+
+                    if min_phash_diff > phash_threshold:
+                        logger.debug(
+                            f"pHash не прошёл: {os.path.basename(lp)} vs "
+                            f"{os.path.basename(hp)} стр.{h_data['page']}: "
+                            f"diff={min_phash_diff} > {phash_threshold}"
+                        )
+                        continue
+
+                    # 2. Структурная проверка: ORB с инвариантностью к повороту.
+                    # Проверяем все 4 поворота l_data против всех 4 поворотов h_data.
+                    # Это позволяет найти совпадение даже если скан повёрнут на 90°/180°/270°.
+                    # ORB обязателен всегда — он отсекает изображения с похожим белым фоном
+                    # (паспортное фото vs документ), которые дают одинаковый pHash.
+                    l_descs = l_data.get('descriptors_rotated', [l_data['descriptors']])
+                    h_descs = h_data.get('descriptors_rotated', [h_data['descriptors']])
+                    orb_ok = any(
+                        are_images_matching(ld, hd, min_matches=orb_min_matches)
+                        for ld in l_descs if ld is not None
+                        for hd in h_descs if hd is not None
+                    )
+                    if not orb_ok:
+                        logger.debug(
+                            f"ORB (все повороты) не прошёл: {os.path.basename(lp)} vs "
+                            f"{os.path.basename(hp)} стр.{h_data['page']}: "
+                            f"diff={min_phash_diff}"
+                        )
+                        continue
+
+                    # 3. Проверка качества: используем native_pixels для корректного
+                    # сравнения PDF (рендер при 72 dpi) с PNG/JPG превью.
+                    # native_pixels для PDF = реальное разрешение страницы при 300 dpi.
+                    # size используем как запасной критерий только для одноформатных пар.
+                    resolution_ok = h_data['native_pixels'] >= l_data['native_pixels'] * quality_ratio
+                    size_ok = (
+                        os.path.splitext(h_data['path'])[1].lower() == os.path.splitext(l_data['path'])[1].lower()
+                        and h_data['size'] >= l_data['size'] * quality_ratio
+                    )
+
+                    if resolution_ok or size_ok:
+                        logger.debug(
+                            f"Оригинал найден: {os.path.basename(lp)} -> "
+                            f"{os.path.basename(hp)} стр.{h_data['page']} "
+                            f"(pHash={min_phash_diff}, orb=True)"
+                        )
+                        results['found'].append((lp, h_data['path'], h_data['page']))
+                        found = True
+                        break
+                    else:
+                        logger.debug(
+                            f"Качество не прошло: {os.path.basename(lp)} vs "
+                            f"{os.path.basename(hp)} стр.{h_data['page']}: "
+                            f"resolution_ok={resolution_ok} "
+                            f"(native_pixels: {h_data['native_pixels']} vs {l_data['native_pixels']}*{quality_ratio}), "
+                            f"size_ok={size_ok}"
+                        )
         
         if not found:
             results['not_found'].append(lp)

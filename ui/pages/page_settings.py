@@ -78,15 +78,15 @@ def create_settings_view(parent, app_state, show_error_callback=None):
     phash_frame = ctk.CTkFrame(originals_frame, fg_color="transparent")
     phash_frame.pack(fill="x", pady=(10, 5))
     
-    current_phash = app_state.get('phash_threshold', 10)
+    current_phash = app_state.get('phash_threshold', 25)
     lbl_phash = ctk.CTkLabel(phash_frame, text=f"Порог pHash (строгость): {current_phash}", font=ui_component.FONTS['main'])
     lbl_phash.pack(anchor="w", pady=(0, 5))
     
-    phash_slider = ctk.CTkSlider(phash_frame, from_=5, to=20, number_of_steps=15, command=update_phash_threshold)
+    phash_slider = ctk.CTkSlider(phash_frame, from_=5, to=35, number_of_steps=30, command=update_phash_threshold)
     phash_slider.set(current_phash)
     phash_slider.pack(anchor="w", pady=(0, 5))
     
-    phash_desc = "Определяет чувствительность сравнения по хэшам (меньше = строже).\nРекомендуется 8-12 для баланса скорости и точности."
+    phash_desc = "Определяет чувствительность сравнения по хэшам (меньше = строже).\n• 10-15 — строгий поиск (почти идентичные изображения).\n• 20-25 — стандартный баланс (рекомендуется).\n• 30-35 — мягкий поиск (находит повёрнутые и обрезанные сканы)."
     phash_desc_frame = ui_component.CTkAdaptiveLabel(phash_frame, text=phash_desc, font=ui_component.FONTS['second'], text_color=ui_component.COLORS['text_second'], justify="left", anchor="w")
     phash_desc_frame.pack(fill="x")
     

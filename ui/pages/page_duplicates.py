@@ -2,6 +2,7 @@ import os
 import threading
 import shutil
 import customtkinter as ctk
+import fitz
 
 from tkinter import filedialog
 from PIL import Image
@@ -205,8 +206,19 @@ def create_dublicates_view(parent, app_state, show_error_callback):
             def get_image_quality(file_path):
                 try:
                     size_bytes = os.path.getsize(file_path)
-                    with Image.open(file_path) as img:
-                        pixels = img.width * img.height
+                    ext = os.path.splitext(file_path)[1].lower()
+                    if ext == '.pdf':
+                        doc = fitz.open(file_path)
+                        # Суммируем пиксели всех страниц как меру качества PDF
+                        pixels = sum(
+                            doc.load_page(p).get_pixmap(dpi=72).width *
+                            doc.load_page(p).get_pixmap(dpi=72).height
+                            for p in range(len(doc))
+                        )
+                        doc.close()
+                    else:
+                        with Image.open(file_path) as img:
+                            pixels = img.width * img.height
                     return (pixels, size_bytes)
                 except Exception:
                     return (0, 0)

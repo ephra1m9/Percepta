@@ -1,3 +1,4 @@
+import tkinter as tk
 import customtkinter as ctk
 import textwrap
 
@@ -36,6 +37,86 @@ FONTS = {
     "second": ("Rubik Light", 15),
     "second_btn": ("Rubik", 15)
 }
+
+
+# Константы белой центральной панели главного экрана
+_PANEL_W = 550
+_PANEL_H = 420
+_PANEL_R = 20  # радиус скругления
+
+
+def _draw_gradient(canvas, width, height, panel_mode=None):
+    """Рисует размытый пастельный градиент через PIL.
+    panel_mode='center' — рисует белую скруглённую панель по центру (главный экран).
+    panel_mode='page'   — рисует белую скруглённую панель на всю ширину (страницы).
+    """
+    from PIL import Image, ImageDraw, ImageFilter, ImageTk
+
+    if width < 2 or height < 2:
+        return
+
+    # Базовый фон
+    img = Image.new("RGBA", (width, height), (240, 244, 248, 255))
+
+    blobs = [
+        (-int(width * 0.2), -int(height * 0.2), int(width * 0.6), int(height * 0.8),  (230, 230, 250, 200)),
+        ( int(width * 0.4), -int(height * 0.3), int(width * 1.2), int(height * 0.7),  (255, 240, 245, 200)),
+        ( int(width * 0.1),  int(height * 0.3), int(width * 0.9), int(height * 1.3),  (240, 248, 255, 200)),
+        (-int(width * 0.1),  int(height * 0.5), int(width * 0.5), int(height * 1.2),  (245, 255, 250, 200)),
+    ]
+
+    for x1, y1, x2, y2, color in blobs:
+        layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        ImageDraw.Draw(layer).ellipse([x1, y1, x2, y2], fill=color)
+        img = Image.alpha_composite(img, layer)
+
+    # Размытие
+    blur_r = max(40, int(min(width, height) * 0.12))
+    img = img.filter(ImageFilter.GaussianBlur(radius=blur_r))
+
+    draw = ImageDraw.Draw(img)
+    brd = (229, 231, 235, 255)
+    white = (255, 255, 255, 255)
+
+    if panel_mode == "center":
+        # Белая панель по центру (главный экран)
+        cx, cy = width // 2, height // 2
+        px1 = cx - _PANEL_W // 2
+        py1 = cy - _PANEL_H // 2
+        px2 = cx + _PANEL_W // 2
+        py2 = cy + _PANEL_H // 2
+        draw.rounded_rectangle([px1-1, py1-1, px2+1, py2+1], radius=_PANEL_R+1, fill=brd)
+        draw.rounded_rectangle([px1, py1, px2, py2], radius=_PANEL_R, fill=white)
+
+    elif panel_mode == "page":
+        # Белая панель занимает всю ширину за вычетом отступов
+        # padx=30 (view), pady_top=80 (header ~50px + отступ), pady_bot=30
+        pad_x, pad_top, pad_bot = 30, 80, 30
+        px1, py1 = pad_x, pad_top
+        px2, py2 = width - pad_x, height - pad_bot
+        draw.rounded_rectangle([px1-1, py1-1, px2+1, py2+1], radius=_PANEL_R+1, fill=brd)
+        draw.rounded_rectangle([px1, py1, px2, py2], radius=_PANEL_R, fill=white)
+
+    canvas._bg_image_rgb = img.convert("RGB")
+    photo = ImageTk.PhotoImage(canvas._bg_image_rgb)
+    canvas._bg_photo = photo
+    canvas.delete("all")
+    canvas.create_image(0, 0, anchor="nw", image=photo)
+
+
+def create_gradient_canvas(parent, panel_mode=None):
+    """Создаёт Canvas с размытым пастельным градиентом, растянутый на весь parent.
+    panel_mode='center' — белая скруглённая панель по центру (главный экран).
+    panel_mode='page'   — белая скруглённая панель на всю рабочую область (страницы).
+    Возвращает canvas — поверх него можно размещать виджеты через place() или grid()."""
+    canvas = tk.Canvas(parent, highlightthickness=0, bd=0, bg="#F0F4F8")
+    canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
+
+    def on_resize(event):
+        _draw_gradient(canvas, event.width, event.height, panel_mode=panel_mode)
+
+    canvas.bind("<Configure>", on_resize)
+    return canvas
 
 
 BUTTON_SIDEBAR = {
@@ -213,7 +294,6 @@ def hr_pack(view, pady=20):
 def process_screen(parent, title: str, scan_mode: str):
     """Окно с информацией о процессе поиска"""
     found_labels = {
-        "reference": "Найдено изображений:",
         "originals": "Найдено оригиналов:",
         "duplicates": "Найдено дубликатов:"
     }
@@ -269,3 +349,45 @@ def process_screen(parent, title: str, scan_mode: str):
         main_container.update_idletasks()
 
     return main_view, update_status
+
+
+# Главный экран
+def main_menu_btn(parent, title_text: str, desc_text: str, icon_name, event_handler):
+    """"Карточка-кнопка для главного меню"""
+    card = ctk.CTkFrame(parent, fg_color="white", border_width=1, border_color=COLORS["border"], corner_radius=12, cursor="hand2")
+    card.pack(fill="x", pady=(0, 15))
+
+    card.grid_columnconfigure(1, weight=1)
+
+    icon_frame = ctk.CTkFrame(card, fg_color="transparent", width=40, height=40, cursor="hand2")
+    icon_frame.grid(row=0, column=0, rowspan=2, padx=20, pady=20)
+    icon_frame.grid_propagate(False)
+
+    icon = ctk.CTkLabel(icon_frame, text="", image=icon_name, cursor="hand2")
+    icon.place(relx=0.5, rely=0.5, anchor="center")
+
+    title = ctk.CTkLabel(card, text=title_text, font=("Montserrat SemiBold", 18), text_color=COLORS["text_main"], anchor="w", fg_color="transparent", cursor="hand2")
+    title.grid(row=0, column=1, sticky="ew", pady=(20, 0), padx=(0, 20))
+
+    description = CTkAdaptiveLabel(card, text=desc_text, font=FONTS['second'], text_color=COLORS["text_second"], anchor="nw", justify="left", fg_color="transparent", cursor="hand2")
+    description.grid(row=1, column=1, sticky="nsew", pady=(5, 20), padx=(0, 20))
+
+    widgets = [card, icon_frame, icon, title, description]
+    
+    def on_click(event):
+        event_handler()
+
+    def on_enter(event):
+        card.configure(border_color=COLORS["primary"])
+
+    def on_leave(event):
+        card.configure(border_color=COLORS["border"])
+
+    widgets = [card, icon_frame, icon, title, description]
+    
+    for widget in widgets:
+        widget.bind("<Button-1>", on_click)
+        widget.bind("<Enter>", on_enter)
+        widget.bind("<Leave>", on_leave)
+
+    return card

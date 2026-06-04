@@ -282,64 +282,6 @@ def are_images_matching(des1, des2, min_matches=None, lowe_ratio=0.72, ratio_thr
         return False
 
 
-def find_reference_matches(reference_paths, search_paths, tolerance=15, progress_callback=None):
-    """
-    Улучшенный поиск по эталону с параллельной обработкой.
-    progress_callback(checked, total, found) — вызывается после каждого эталона.
-    """
-    logger.info(f"Поиск по эталону: {len(reference_paths)} эталонов, {len(search_paths)} для поиска")
-    
-    phash_tolerance = min(18, tolerance + 5)
-    histogram_threshold = 0.65
-    ssim_threshold = 0.85
-    
-    logger.info(f"Пороги: pHash<={phash_tolerance}, hist>={histogram_threshold}, SSIM>={ssim_threshold}")
-    
-    all_paths = list(set(reference_paths + search_paths))
-    logger.info(f"Вычисление данных для {len(all_paths)} файлов...")
-    all_data = get_all_image_data_parallel(all_paths)
-    logger.info(f"Данные вычислены для {len(all_data)} файлов")
-    
-    matches = []
-    matched_search = set()
-    total_refs = len(reference_paths)
-    
-    # Обрабатываем эталонные файлы
-    for i, ref_path in enumerate(reference_paths):
-        if ref_path not in all_data:
-            if progress_callback:
-                progress_callback(i + 1, total_refs, len(matches))
-            continue
-        ref_data_list = all_data[ref_path]
-        
-        for ref_data in ref_data_list:
-            for search_path in search_paths:
-                if search_path in matched_search:
-                    continue
-                if search_path not in all_data:
-                    continue
-                
-                search_data_list = all_data[search_path]
-                
-                for search_data in search_data_list:
-                    match_result = check_images_match(
-                        ref_data, search_data,
-                        phash_tolerance, histogram_threshold, ssim_threshold
-                    )
-                    
-                    if match_result:
-                        matches.append([ref_path, search_path])
-                        matched_search.add(search_path)
-                        logger.info(f"Совпадение: {os.path.basename(ref_path)} -> {os.path.basename(search_path)}")
-                        break
-        
-        if progress_callback:
-            progress_callback(i + 1, total_refs, len(matches))
-    
-    logger.info(f"Найдено {len(matches)} совпадений")
-    return matches
-
-
 def load_image_for_ssim(path, page):
     """
     Загружает изображение для вычисления SSIM.

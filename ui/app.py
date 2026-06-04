@@ -7,7 +7,6 @@ import ui.ui_components as ui_component
 import utils.config as cfg
 
 from .pages.page_duplicates import create_dublicates_view
-from .pages.page_reference import create_reference_view
 from .pages.page_originals import create_originals_view
 from .pages.page_settings import create_settings_view
 
@@ -78,9 +77,9 @@ def show_error_modal(root, message):
 def main():
     root = ctk.CTk()
     root.title(cfg.APP_TITLE)
-    root.geometry(cfg.APP_SIZE)
-    root.minsize(800, 500)
-    root.configure(fg_color=ui_component.COLORS["bg_app"])
+    root.geometry("1000x700")
+    root.minsize(800, 600)
+    root.configure(fg_color="#F0F4F8")
 
     root.create_font_icon = create_font_icon
 
@@ -93,73 +92,107 @@ def main():
     icon_path = load_fonts()
     root.icon_path = icon_path
 
-    root.grid_columnconfigure(0, minsize=240)
-    root.grid_columnconfigure(1, weight=1) 
-    root.grid_rowconfigure(0, weight=1)    
-
-    # --- SIDEBAR ---
-    sidebar_frame = ctk.CTkFrame(root, corner_radius=0, fg_color=ui_component.COLORS["bg_surface"])
-    sidebar_frame.grid(row=0, column=0, sticky="nsew")
-    sidebar_frame.grid_columnconfigure(0, weight=1) 
-    sidebar_frame.grid_rowconfigure(6, weight=1) 
-
-    ctk.CTkLabel(sidebar_frame, text="Percepta", font=ui_component.FONTS['title'], text_color=ui_component.COLORS["primary"]).grid(row=0, column=0, pady=(40, 40))
-
-    # Иконки
-    icon_single = create_font_icon("\uF42B", icon_path, size=16, color=ui_component.COLORS["text_main"])
-    icon_multi = create_font_icon("\uF5A9", icon_path, size=16, color=ui_component.COLORS["text_main"])
-    icon_originals = create_font_icon("\uF787", icon_path, size=16, color=ui_component.COLORS["text_main"])
-    icon_settings = create_font_icon("\uF3E5", icon_path, size=16, color=ui_component.COLORS["text_main"])
-
-    # Кнопки
-    nav_buttons = {}
-
-    nav_buttons["single"] = ctk.CTkButton(sidebar_frame, text="  Поиск дубликатов", image=icon_single, **ui_component.BUTTON_SIDEBAR)
-    nav_buttons["single"].grid(row=1, column=0, padx=20, pady=5, sticky="ew")
-
-    nav_buttons["multi"] = ctk.CTkButton(sidebar_frame, text="  Поиск по эталону", image=icon_multi, **ui_component.BUTTON_SIDEBAR)
-    nav_buttons["multi"].grid(row=2, column=0, padx=20, pady=5, sticky="ew")
-
-    nav_buttons["originals"] = ctk.CTkButton(sidebar_frame, text="  Поиск оригиналов", image=icon_originals, **ui_component.BUTTON_SIDEBAR)
-    nav_buttons["originals"].grid(row=3, column=0, padx=20, pady=5, sticky="ew")
-
-    nav_buttons["settings"] = ctk.CTkButton(sidebar_frame, text="  Настройки", image=icon_settings, **ui_component.BUTTON_SIDEBAR)
-    nav_buttons["settings"].grid(row=7, column=0, padx=20, sticky="ew")
-
-    ui_component.hr_grid(sidebar_frame, row=8, pady=20)
-
-    ctk.CTkLabel(sidebar_frame, text=f"v. {cfg.VERSION}", font=ui_component.FONTS['second'], text_color=ui_component.COLORS['text_second']).grid(row=9, column=0, padx=20, pady=(0, 30))
+    root.grid_columnconfigure(0, weight=1)
+    root.grid_rowconfigure(0, weight=1)
 
     def error_callback(msg):
         show_error_modal(root, msg)
 
-    # --- ИНИЦИАЛИЗАЦИЯ ЭКРАНОВ ---
-    views = {
-        "single": create_dublicates_view(root, app_state, error_callback),
-        "multi": create_reference_view(root, app_state, error_callback),
-        "originals": create_originals_view(root, app_state, error_callback),
-        "settings": create_settings_view(root, app_state, error_callback)
-    }
+    # --- СОЗДАНИЕ КОНТЕЙНЕРОВ И ЭКРАНОВ ---
+    views_containers = {}
+    views = {}
+    
+    # Имена экранов
+    screen_names = ["single", "originals", "settings"]
 
-    # for view in views.values():
-    #     view.configure(fg_color=ui_component.COLORS["bg_surface"], corner_radius=15)
+    for name in screen_names:
+        container = ctk.CTkFrame(root, fg_color="transparent")
+        container.grid_columnconfigure(0, weight=1)
+        container.grid_rowconfigure(0, weight=1)
+        
+        container.create_font_icon = create_font_icon
+        container.icon_path = icon_path
 
-    def select_frame_by_name(name):
-        for btn in nav_buttons.values():
-            btn.configure(fg_color="transparent", text_color=ui_component.COLORS["text_main"])
-        for view in views.values():
-            view.grid_forget()
+        bg_canvas = ui_component.create_gradient_canvas(container, panel_mode="page")
 
-        nav_buttons[name].configure(fg_color=ui_component.COLORS.get("primary_light", "lightblue"))
-        views[name].grid(row=0, column=1, sticky="nsew", padx=30, pady=30)
+        back_icon = create_font_icon("\uF12F", icon_path, size=20, color=ui_component.COLORS["text_main"])
+        back_btn = ctk.CTkButton(container, text=" Назад", image=back_icon, fg_color="white", bg_color="#F0F4F8", text_color=ui_component.COLORS["text_main"], hover_color=ui_component.COLORS["hover_gray"], width=100, corner_radius=8, command=lambda: show_main_screen())
+        back_btn.place(x=30, y=20)
 
-    # Прявязка событий к кнопкам
-    nav_buttons["single"].configure(command=lambda: select_frame_by_name("single"))
-    nav_buttons["multi"].configure(command=lambda: select_frame_by_name("multi"))
-    nav_buttons["originals"].configure(command=lambda: select_frame_by_name("originals"))
-    nav_buttons["settings"].configure(command=lambda: select_frame_by_name("settings"))
+        def _update_btn_bg(event, btn=back_btn, cvs=bg_canvas):
+            if hasattr(cvs, '_bg_image_rgb') and event.width > 60 and event.height > 40:
+                px = min(80, event.width - 1)
+                py = min(36, event.height - 1)
+                r, g, b = cvs._bg_image_rgb.getpixel((px, py))
+                btn.configure(bg_color=f"#{r:02x}{g:02x}{b:02x}")
+        bg_canvas.bind("<Configure>", _update_btn_bg, add="+")
+        
+        views_containers[name] = container
 
-    select_frame_by_name("single") 
+    views["single"] = create_dublicates_view(views_containers["single"], app_state, error_callback)
+    views["originals"] = create_originals_view(views_containers["originals"], app_state, error_callback)
+    views["settings"] = create_settings_view(views_containers["settings"], app_state, error_callback)
+
+    for name, view in views.items():
+        view.grid(row=0, column=0, sticky="nsew", padx=50, pady=(100, 50))
+
+    # --- MAIN SCREEN ---
+    main_frame = ctk.CTkFrame(root, fg_color="transparent")
+    main_frame.grid(row=0, column=0, sticky="nsew")
+    main_frame.grid_columnconfigure(0, weight=1)
+    main_frame.grid_rowconfigure(0, weight=1)
+
+    # Градиентный фон с белой панелью по центру — рисуется в PIL (без артефактов углов)
+    ui_component.create_gradient_canvas(main_frame, panel_mode="center")
+
+    # Кнопка настроек
+    icon_settings = create_font_icon("\uF3E5", icon_path, size=16, color=ui_component.COLORS["primary"])
+    btn_settings = ctk.CTkButton(main_frame, text=" Настройки", image=icon_settings, fg_color="white", bg_color="#F0F4F8", text_color=ui_component.COLORS["text_main"], hover_color=ui_component.COLORS["hover_gray"], border_width=1, border_color=ui_component.COLORS["border"], corner_radius=10, width=130, height=40, font=ui_component.FONTS["second_btn"], command=lambda: select_view("settings"))
+    btn_settings.place(relx=1.0, rely=0.0, x=-30, y=30, anchor="ne")
+
+    # Белый контейнер поверх Canvas-панели.
+    # CTkFrame на 40px у́же/ни́же PIL-панели — скруглённые углы из PIL выглядывают по краям.
+    center_panel = ctk.CTkFrame(main_frame, fg_color="#FFFFFF", corner_radius=0, width=510, height=380)
+    center_panel.place(relx=0.5, rely=0.5, anchor="center")
+    center_panel.grid_propagate(False)
+    center_panel.grid_columnconfigure(0, weight=1)
+
+    lbl_title = ctk.CTkLabel(center_panel, text="Найди мне...", font=("Montserrat", 24), text_color=ui_component.COLORS["text_main"])
+    lbl_title.grid(row=0, column=0, pady=(25, 15))
+
+    buttons_container = ctk.CTkFrame(center_panel, fg_color="transparent")
+    buttons_container.grid(row=1, column=0, sticky="ew", padx=30)
+
+    icon_single = create_font_icon("\uF42B", icon_path, size=28, color=ui_component.COLORS["primary"])
+    ui_component.main_menu_btn(
+        buttons_container, 
+        "Дубликаты", 
+        "Найти и удалить дубликаты файлов на вашем устройстве для освобождения места", 
+        icon_single,
+        lambda: select_view("single")
+    )
+
+    icon_originals = create_font_icon("\uF787", icon_path, size=28, color=ui_component.COLORS["primary"])
+    ui_component.main_menu_btn(
+        buttons_container, 
+        "Оригиналы", 
+        "Найти оригинальные файлы и оставить только уникальные версии", 
+        icon_originals,
+        lambda: select_view("originals")
+    )
+
+    def select_view(name):
+        main_frame.grid_forget()
+        for v in views_containers.values():
+            v.grid_forget()
+        views_containers[name].grid(row=0, column=0, sticky="nsew")
+
+    def show_main_screen():
+        for v in views_containers.values():
+            v.grid_forget()
+        main_frame.grid(row=0, column=0, sticky="nsew")
+
+    show_main_screen()
     root.mainloop()
 
 

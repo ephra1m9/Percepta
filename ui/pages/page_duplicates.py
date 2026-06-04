@@ -13,7 +13,7 @@ from utils.scanner import find_duplicates
 
 
 def create_dublicates_view(parent, app_state, show_error_callback):    
-    view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=15)
+    view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=0)
     
     content = ctk.CTkFrame(view, fg_color="transparent")
     content.pack(fill="both", expand=True, padx=40, pady=20)

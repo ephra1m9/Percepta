@@ -4,7 +4,7 @@ import ui.ui_components as ui_component
 
 
 def create_settings_view(parent, app_state, show_error_callback=None):
-    view = ctk.CTkScrollableFrame(parent, fg_color="#FFFFFF", corner_radius=15)
+    view = ctk.CTkScrollableFrame(parent, fg_color="#FFFFFF", corner_radius=0)
 
     view.grid_columnconfigure(0, weight=1)
     view.grid_rowconfigure(2, weight=1)

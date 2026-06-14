@@ -116,8 +116,10 @@ def main():
         bg_canvas = ui_component.create_gradient_canvas(container, panel_mode="page")
 
         back_icon = create_font_icon("\uF12F", icon_path, size=20, color=ui_component.COLORS["text_main"])
-        back_btn = ctk.CTkButton(container, text=" Назад", image=back_icon, fg_color="white", bg_color="#F0F4F8", text_color=ui_component.COLORS["text_main"], hover_color=ui_component.COLORS["hover_gray"], width=100, corner_radius=8, command=lambda: show_main_screen())
+        back_btn = ctk.CTkButton(container, text=" Назад", image=back_icon, fg_color="white", bg_color="#F0F4F8", text_color=ui_component.COLORS["text_main"], hover_color="white", border_width=1, border_color=ui_component.COLORS["border"], width=100, corner_radius=8, command=lambda: show_main_screen())
         back_btn.place(x=30, y=20)
+        back_btn.bind("<Enter>", lambda e, b=back_btn: b.configure(border_color=ui_component.COLORS["primary"]))
+        back_btn.bind("<Leave>", lambda e, b=back_btn: b.configure(border_color=ui_component.COLORS["border"]))
 
         def _update_btn_bg(event, btn=back_btn, cvs=bg_canvas):
             if hasattr(cvs, '_bg_image_rgb') and event.width > 60 and event.height > 40:
@@ -142,16 +144,17 @@ def main():
     main_frame.grid_columnconfigure(0, weight=1)
     main_frame.grid_rowconfigure(0, weight=1)
 
-    # Градиентный фон с белой панелью по центру — рисуется в PIL (без артефактов углов)
+    # Градиентный фон с белой панелью по центру
     ui_component.create_gradient_canvas(main_frame, panel_mode="center")
 
     # Кнопка настроек
     icon_settings = create_font_icon("\uF3E5", icon_path, size=16, color=ui_component.COLORS["primary"])
-    btn_settings = ctk.CTkButton(main_frame, text=" Настройки", image=icon_settings, fg_color="white", bg_color="#F0F4F8", text_color=ui_component.COLORS["text_main"], hover_color=ui_component.COLORS["hover_gray"], border_width=1, border_color=ui_component.COLORS["border"], corner_radius=10, width=130, height=40, font=ui_component.FONTS["second_btn"], command=lambda: select_view("settings"))
+    btn_settings = ctk.CTkButton(main_frame, text=" Настройки", image=icon_settings, fg_color="white", bg_color="#F0F4F8", text_color=ui_component.COLORS["text_main"], hover_color="white", border_width=1, border_color=ui_component.COLORS["border"], corner_radius=10, width=130, height=40, font=ui_component.FONTS["second_btn"], command=lambda: select_view("settings"))
     btn_settings.place(relx=1.0, rely=0.0, x=-30, y=30, anchor="ne")
+    btn_settings.bind("<Enter>", lambda e: btn_settings.configure(border_color=ui_component.COLORS["primary"]))
+    btn_settings.bind("<Leave>", lambda e: btn_settings.configure(border_color=ui_component.COLORS["border"]))
 
     # Белый контейнер поверх Canvas-панели.
-    # CTkFrame на 40px у́же/ни́же PIL-панели — скруглённые углы из PIL выглядывают по краям.
     center_panel = ctk.CTkFrame(main_frame, fg_color="#FFFFFF", corner_radius=0, width=510, height=380)
     center_panel.place(relx=0.5, rely=0.5, anchor="center")
     center_panel.grid_propagate(False)
@@ -167,7 +170,7 @@ def main():
     ui_component.main_menu_btn(
         buttons_container, 
         "Дубликаты", 
-        "Найти и удалить дубликаты файлов на вашем устройстве для освобождения места", 
+        "Найди одинаковые изображения", 
         icon_single,
         lambda: select_view("single")
     )
@@ -176,7 +179,7 @@ def main():
     ui_component.main_menu_btn(
         buttons_container, 
         "Оригиналы", 
-        "Найти оригинальные файлы и оставить только уникальные версии", 
+        "Найди изображения в лучшем качестве", 
         icon_originals,
         lambda: select_view("originals")
     )

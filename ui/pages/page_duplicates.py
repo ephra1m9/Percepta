@@ -67,20 +67,20 @@ def create_dublicates_view(parent, app_state, show_error_callback):
     FONT_LABEL = ("Rubik", 16)
     FONT_DESC = ("Rubik Light", 14)
 
-    # Уровень строгости
+    # Допуск к различиям
     def update_tolerance(value):
         val = int(value)
         app_state['tolerance'] = val
-        lbl_tolerance.configure(text=f"Уровень строгости: {val}")
+        lbl_tolerance.configure(text=f"Допуск к различиям: {val}")
 
     tolerance_info = ctk.CTkFrame(settings_content, fg_color="transparent")
     tolerance_info.grid(row=0, column=0, sticky="ew", padx=(0, 8), pady=(0, 10))
 
     current_tolerance = app_state.get('tolerance', 15)
-    lbl_tolerance = ctk.CTkLabel(tolerance_info, text=f"Уровень строгости: {current_tolerance}", font=FONT_LABEL)
+    lbl_tolerance = ctk.CTkLabel(tolerance_info, text=f"Допуск к различиям: {current_tolerance}", font=FONT_LABEL)
     lbl_tolerance.pack(anchor="w")
 
-    tolerance_desc = "Сколько общих деталей должны совпадать. 10-12 — после кропа, 15 — баланс, 25-35 — почти идентичные кадры."
+    tolerance_desc = "Насколько изображения могут отличаться друг от друга. 5-12 — только почти идентичные кадры, 15 — баланс, 25-35 — находит и кадры после кропа, но возможны ложные совпадения."
     tolerance_desc_frame = ctk.CTkLabel(tolerance_info, text=tolerance_desc, font=FONT_DESC, text_color=ui_component.COLORS['text_second'], justify="left", anchor="w", wraplength=380)
     tolerance_desc_frame.pack(fill="x", pady=(2, 0))
 
@@ -217,7 +217,7 @@ def create_dublicates_view(parent, app_state, show_error_callback):
             group_frame.pack(fill="x", pady=(0, 10), padx=5)
 
             orig_name = os.path.basename(group[0])
-            ctk.CTkLabel(group_frame, text=f"⭐ {orig_name} (Оригинал)", font=ui_component.FONTS['main'], text_color=ui_component.COLORS["primary"]).pack(anchor="w", padx=15, pady=(10, 5))
+            ctk.CTkLabel(group_frame, text=f"{orig_name}", font=ui_component.FONTS['main'], text_color=ui_component.COLORS["primary"]).pack(anchor="w", padx=15, pady=(10, 5))
 
             for dup_path in group[1:]:
                 dup_name = os.path.basename(dup_path)

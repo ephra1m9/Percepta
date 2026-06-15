@@ -211,7 +211,7 @@ def description(view, text: str):
 
 def result_action_card_btn(parent, title_text: str, desc_text: str, icon_name, event_handler):
     """"Карточка-кнопка для действия с результатом"""
-    card = ctk.CTkFrame(parent, fg_color="transparent", border_width=1, border_color=COLORS["border"], corner_radius=10, cursor="hand2")
+    card = ctk.CTkFrame(parent, fg_color="transparent", border_width=1, border_color=COLORS["border_dark"], corner_radius=10, cursor="hand2")
     card.pack(fill="x", pady=(0, 10))
 
     header_frame = ctk.CTkFrame(card, fg_color="transparent", cursor="hand2")
@@ -282,7 +282,7 @@ def process_screen(parent, title: str, scan_mode: str):
         "duplicates": "Найдено дубликатов:"
     }
 
-    main_view = ctk.CTkFrame(parent, fg_color="transparent", border_width=1, border_color=COLORS["border"], corner_radius=10)
+    main_view = ctk.CTkFrame(parent, fg_color="transparent", border_width=1, border_color=COLORS["border_dark"], corner_radius=10)
     main_view.grid_rowconfigure(0, weight=1)
     main_view.grid_columnconfigure(0, weight=1)
 

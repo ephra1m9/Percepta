@@ -385,12 +385,23 @@ def check_images_match(ref_data, search_data, phash_tolerance, histogram_thresho
 
 
 def find_duplicates(image_paths, tolerance=15, progress_callback=None):
-    """Поиск дубликатов по pHash.
+    """Поиск дубликатов по pHash + подтверждение ORB / гистограммой.
     progress_callback(checked, total, found) — вызывается после каждого файла.
     Прогресс: 0.0→1.0 по всем файлам (кэширование + сравнение).
     """
     phash_tolerance = max(8, tolerance // 2)
-    logger.info(f"Поиск дубликатов: {len(image_paths)} файлов, tolerance={phash_tolerance}")
+    # При большом tolerance pHash сам по себе даёт много ложных совпадений —
+    # подтверждаем их структурным сравнением ORB (с учётом поворотов).
+    # Для сканов документов (преимущественно белый фон) гистограмма почти
+    # не отличается, поэтому ORB — основной фильтр; гистограмма используется
+    # только как запасной критерий, если на изображениях мало деталей для ORB.
+    orb_min_matches = max(12, tolerance // 2)
+    histogram_threshold = min(0.9, 0.6 + phash_tolerance * 0.02)
+    logger.info(
+        f"Поиск дубликатов: {len(image_paths)} файлов, "
+        f"phash_tolerance={phash_tolerance}, orb_min_matches={orb_min_matches}, "
+        f"histogram_threshold={histogram_threshold:.2f}"
+    )
     
     total = len(image_paths)
 
@@ -432,13 +443,49 @@ def find_duplicates(image_paths, tolerance=15, progress_callback=None):
                     if diff < min_hash_diff:
                         min_hash_diff = diff
 
-            if min_hash_diff <= phash_tolerance:
-                group.append(d2['path'])
-                visited.add(item_id2)
-                logger.debug(
-                    f"Дубликат: {os.path.basename(d1['path'])} (стр.{d1['page']}) "
-                    f"<-> {os.path.basename(d2['path'])} (стр.{d2['page']}) diff={min_hash_diff}"
+            if min_hash_diff > phash_tolerance:
+                continue
+
+            # Подтверждение: ORB с учётом поворотов — отсекает случаи, когда
+            # pHash совпал по общей структуре (например, белый фон документа),
+            # а содержимое изображений разное.
+            l_descs = d1.get('descriptors_rotated', [d1['descriptors']])
+            h_descs = d2.get('descriptors_rotated', [d2['descriptors']])
+            enough_features = (
+                d1['descriptors'] is not None and len(d1['descriptors']) > 10 and
+                d2['descriptors'] is not None and len(d2['descriptors']) > 10
+            )
+
+            if enough_features:
+                confirmed = any(
+                    are_images_matching(ld, hd, min_matches=orb_min_matches)
+                    for ld in l_descs if ld is not None
+                    for hd in h_descs if hd is not None
                 )
+                reason = "ORB"
+            else:
+                # Мало деталей для ORB (однотонные/простые изображения) —
+                # подтверждаем схожестью цветовых гистограмм
+                hist_similarity = compare_histograms(d1['histograms'], d2['histograms'])
+                confirmed = hist_similarity >= histogram_threshold
+                reason = f"hist={hist_similarity:.2f}"
+
+            if not confirmed:
+                logger.debug(
+                    f"pHash совпал, но не подтверждено ({reason}): "
+                    f"{os.path.basename(d1['path'])} (стр.{d1['page']}) "
+                    f"<-> {os.path.basename(d2['path'])} (стр.{d2['page']}) "
+                    f"diff={min_hash_diff}"
+                )
+                continue
+
+            group.append(d2['path'])
+            visited.add(item_id2)
+            logger.debug(
+                f"Дубликат: {os.path.basename(d1['path'])} (стр.{d1['page']}) "
+                f"<-> {os.path.basename(d2['path'])} (стр.{d2['page']}) "
+                f"diff={min_hash_diff} ({reason})"
+            )
 
         if len(group) > 1:
             groups.append(group)

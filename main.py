@@ -1,4 +1,5 @@
 import ctypes
+import multiprocessing
 
 try:
     ctypes.windll.shcore.SetProcessDpiAwareness(2)
@@ -12,4 +13,5 @@ from ui.app import main as run_app
 
 
 if __name__ == '__main__':
+    multiprocessing.freeze_support()
     run_app()

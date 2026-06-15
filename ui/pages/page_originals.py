@@ -344,13 +344,16 @@ def create_originals_view(parent, app_state, show_error_callback):
             phash_threshold = app_state.get('phash_threshold', 10)
             quality_ratio = app_state.get('quality_ratio', 1.2)
             
+            max_workers = app_state.get('max_workers')
+
             results = find_originals(
                 low_files,
                 sources_files,
                 tolerance=tolerance,
                 phash_threshold=phash_threshold,
                 quality_ratio=quality_ratio,
-                progress_callback=on_progress
+                progress_callback=on_progress,
+                max_workers=max_workers
             )
 
             # Финальное обновление — 100%

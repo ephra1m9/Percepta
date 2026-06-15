@@ -1,3 +1,5 @@
+from multiprocessing import cpu_count
+
 import customtkinter as ctk
 
 import ui.ui_components as ui_component
@@ -110,6 +112,30 @@ def create_settings_view(parent, app_state, show_error_callback=None):
     quality_desc = "Во сколько раз оригинал должен быть лучше превью (по размеру файла или разрешению).\n1.0 = любой размер, 1.5 = оригинал на 50% лучше."
     quality_desc_frame = ui_component.CTkAdaptiveLabel(quality_frame, text=quality_desc, font=ui_component.FONTS['second'], text_color=ui_component.COLORS['text_second'], justify="left", anchor="w")
     quality_desc_frame.pack(fill="x")
+
+    # Количество процессов для поиска оригиналов
+    total_cores = cpu_count()
+    default_workers = max(1, total_cores - 1)
+
+    def update_max_workers(value):
+        val = int(value)
+        app_state['max_workers'] = val
+        lbl_workers.configure(text=f"Используемых ядер процессора: {val} из {total_cores}")
+
+    workers_frame = ctk.CTkFrame(originals_frame, fg_color="transparent")
+    workers_frame.pack(fill="x", pady=(10, 5))
+
+    current_workers = app_state.get('max_workers', default_workers)
+    lbl_workers = ctk.CTkLabel(workers_frame, text=f"Используемых ядер процессора: {current_workers} из {total_cores}", font=ui_component.FONTS['main'])
+    lbl_workers.pack(anchor="w", pady=(0, 5))
+
+    workers_slider = ctk.CTkSlider(workers_frame, from_=1, to=total_cores, number_of_steps=max(1, total_cores - 1), command=update_max_workers)
+    workers_slider.set(current_workers)
+    workers_slider.pack(anchor="w", pady=(0, 5))
+
+    workers_desc = "Сколько ядер CPU использовать при поиске оригиналов.\nМеньше — ниже нагрузка на компьютер, но дольше поиск."
+    workers_desc_frame = ui_component.CTkAdaptiveLabel(workers_frame, text=workers_desc, font=ui_component.FONTS['second'], text_color=ui_component.COLORS['text_second'], justify="left", anchor="w")
+    workers_desc_frame.pack(fill="x")
 
     desc_recursive = "При включении будет выполняться поиск во всех подпапках выбранных директорий."
     desc_recursive_frame = ui_component.CTkAdaptiveLabel(search_recursive_frame, text=desc_recursive, text_color=ui_component.COLORS["text_second"], font=ui_component.FONTS['second'], justify="left", anchor="w")

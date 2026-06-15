@@ -20,7 +20,6 @@ bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
 
 # Глобальный кэш для данных изображений
 _image_data_cache = {}
-_use_multiprocessing = False
 _max_workers = max(1, cpu_count() - 1)
 
 
@@ -37,6 +36,13 @@ def clear_image_cache():
     _image_data_cache.clear()
 
 
+def _init_worker():
+    # Каждый воркер обрабатывает один файл за раз — отключаем внутреннюю
+    # многопоточность OpenCV, иначе N процессов x M внутренних потоков
+    # перегружают CPU сильнее, чем заданное число воркеров
+    cv2.setNumThreads(1)
+
+
 def _process_single_image(path):
     return path, get_image_data(path)
 
@@ -44,10 +50,11 @@ def _process_single_image(path):
 def get_all_image_data_parallel(paths, num_workers=None):
     if num_workers is None:
         num_workers = _max_workers
-    
+    num_workers = max(1, min(num_workers, cpu_count()))
+
     results = {}
-    
-    if len(paths) < 10 or not _use_multiprocessing:
+
+    if len(paths) < 10 or num_workers == 1:
         for path in paths:
             data = get_image_data(path)
             if data:
@@ -55,7 +62,7 @@ def get_all_image_data_parallel(paths, num_workers=None):
     else:
         logger.info(f"Параллельная обработка {len(paths)} файлов на {num_workers} процессах")
         try:
-            with Pool(num_workers) as pool:
+            with Pool(num_workers, initializer=_init_worker) as pool:
                 for path, data_list in pool.imap(_process_single_image, paths, chunksize=5):
                     if data_list:
                         results[path] = data_list
@@ -441,19 +448,22 @@ def find_duplicates(image_paths, tolerance=15, progress_callback=None):
     return groups
 
 
-def find_originals(low_res_paths, high_res_paths, tolerance=20, phash_threshold=None, quality_ratio=None, progress_callback=None):
+def find_originals(low_res_paths, high_res_paths, tolerance=20, phash_threshold=None, quality_ratio=None, progress_callback=None, max_workers=None):
     """Поиск оригиналов: гибридный подход pHash + ORB + проверка качества.
     progress_callback(checked, total, found) — вызывается после каждого low-res файла.
+    max_workers — сколько процессов использовать для кэширования (по умолчанию cpu_count()-1).
     """
     results = {'found': [], 'not_found': []}
-    
+
     def clean_name(p):
         return re.sub(r'(_original|_edit|_retouch|-copy|\(\d+\))$', '',
                       os.path.splitext(os.path.basename(p))[0].lower()).strip()
-    
-    # Кэшируем данные
-    for p in set(low_res_paths + high_res_paths):
-        get_image_data_cached(p)
+
+    # Кэшируем данные — тяжёлые вычисления (pHash/ORB по 4 поворотам)
+    # распределяются по процессам, чтобы не грузить одно ядро на 90%+
+    paths_to_cache = [p for p in set(low_res_paths + high_res_paths) if p not in _image_data_cache]
+    if paths_to_cache:
+        _image_data_cache.update(get_all_image_data_parallel(paths_to_cache, num_workers=max_workers))
     
     if phash_threshold is None:
         phash_threshold = 25

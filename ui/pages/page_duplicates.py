@@ -4,6 +4,7 @@ import shutil
 import customtkinter as ctk
 import fitz
 
+import tkinter as tk
 from tkinter import filedialog
 from PIL import Image
 
@@ -16,7 +17,7 @@ def create_dublicates_view(parent, app_state, show_error_callback):
     view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=0)
     
     content = ctk.CTkFrame(view, fg_color="transparent")
-    content.pack(fill="both", expand=True, padx=40, pady=20)
+    content.pack(fill="both", expand=True, padx=30, pady=20)
     
     main_container = ctk.CTkFrame(content, fg_color="transparent")
     main_container.pack(fill="both", expand=True)
@@ -37,22 +38,101 @@ def create_dublicates_view(parent, app_state, show_error_callback):
     icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=15, color=ui_component.COLORS["danger"])
 
     # ================= ЭКРАН 1: НАСТРОЙКИ =================
-    setup_frame = ctk.CTkFrame(main_container, fg_color="transparent")
+    setup_frame = ctk.CTkScrollableFrame(
+        main_container, fg_color="transparent",
+        scrollbar_button_color="#FFFFFF", scrollbar_button_hover_color="#FFFFFF"
+    )
     setup_frame.grid_columnconfigure(0, weight=1)
-    
+
     ui_component.title(setup_frame, "Поиск дубликатов")
     ui_component.description(setup_frame, "Ищет дубликаты изображений в одной выбранной папке.")
 
-    frame_folder = ctk.CTkFrame(setup_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border'], corner_radius=10)
-    frame_folder.grid(row=2, column=0, sticky="ew", pady=(20, 20))
-    
+    frame_folder = ctk.CTkFrame(setup_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border_dark'], corner_radius=10)
+    frame_folder.grid(row=2, column=0, sticky="ew", pady=(0, 20))
+
     btn_folder = ctk.CTkButton(frame_folder, text="Выбрать папку", font=ui_component.FONTS['second_btn'], image=icon_folder, **ui_component.BUTTON_SECONDARY)
     btn_folder.pack(side="left", padx=10, pady=10)
     lbl_folder = ctk.CTkLabel(frame_folder, text="Не выбрано", text_color=ui_component.COLORS["text_second"], font=ui_component.FONTS['second'], anchor="e")
     lbl_folder.pack(side="left", fill="x", expand=True, padx=10, pady=10)
 
+    # ----- Плашка с настройками поиска дубликатов -----
+    settings_frame = ctk.CTkFrame(setup_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border_dark'], corner_radius=10)
+    settings_frame.grid(row=3, column=0, sticky="ew", pady=(0, 20))
+
+    settings_content = ctk.CTkFrame(settings_frame, fg_color="transparent")
+    settings_content.pack(fill="x", expand=True, padx=15, pady=12)
+    settings_content.grid_columnconfigure(0, weight=7, uniform="settings")
+    settings_content.grid_columnconfigure(1, weight=5, uniform="settings")
+
+    FONT_LABEL = ("Rubik", 16)
+    FONT_DESC = ("Rubik Light", 14)
+
+    # Уровень строгости
+    def update_tolerance(value):
+        val = int(value)
+        app_state['tolerance'] = val
+        lbl_tolerance.configure(text=f"Уровень строгости: {val}")
+
+    tolerance_info = ctk.CTkFrame(settings_content, fg_color="transparent")
+    tolerance_info.grid(row=0, column=0, sticky="ew", padx=(0, 8), pady=(0, 10))
+
+    current_tolerance = app_state.get('tolerance', 15)
+    lbl_tolerance = ctk.CTkLabel(tolerance_info, text=f"Уровень строгости: {current_tolerance}", font=FONT_LABEL)
+    lbl_tolerance.pack(anchor="w")
+
+    tolerance_desc = "Сколько общих деталей должны совпадать. 10-12 — после кропа, 15 — баланс, 25-35 — почти идентичные кадры."
+    tolerance_desc_frame = ctk.CTkLabel(tolerance_info, text=tolerance_desc, font=FONT_DESC, text_color=ui_component.COLORS['text_second'], justify="left", anchor="w", wraplength=380)
+    tolerance_desc_frame.pack(fill="x", pady=(2, 0))
+
+    tolerance_slider_frame = ctk.CTkFrame(settings_content, fg_color="transparent")
+    tolerance_slider_frame.grid(row=0, column=1, sticky="ew", padx=(8, 0), pady=(0, 10))
+
+    tolerance_slider = ctk.CTkSlider(tolerance_slider_frame, width=1, from_=5, to=35, number_of_steps=30, command=update_tolerance)
+    tolerance_slider.set(current_tolerance)
+    tolerance_slider.pack(fill="x")
+
+    # Разделитель
+    hr1 = tk.Frame(settings_content, height=1, bg=ui_component.COLORS["border"], bd=0, highlightthickness=0)
+    hr1.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+
+    # Поиск во вложенных папках
+    def toggle_search_recursive():
+        app_state['search_recursive'] = bool(switch.get())
+
+    recursive_info = ctk.CTkFrame(settings_content, fg_color="transparent")
+    recursive_info.grid(row=2, column=0, sticky="ew", padx=(0, 8))
+
+    lbl_recursive = ctk.CTkLabel(recursive_info, text="Поиск во вложенных папках", font=FONT_LABEL)
+    lbl_recursive.pack(anchor="w")
+
+    recursive_desc = "При включении поиск выполняется во всех подпапках выбранной директории."
+    recursive_desc_frame = ctk.CTkLabel(recursive_info, text=recursive_desc, font=FONT_DESC, text_color=ui_component.COLORS['text_second'], justify="left", anchor="w", wraplength=380)
+    recursive_desc_frame.pack(fill="x", pady=(2, 0))
+
+    recursive_switch_frame = ctk.CTkFrame(settings_content, fg_color="transparent")
+    recursive_switch_frame.grid(row=2, column=1, sticky="ew", padx=(8, 0))
+
+    switch = ctk.CTkSwitch(recursive_switch_frame, text="", command=toggle_search_recursive, onvalue=True, offvalue=False)
+    switch.pack(anchor="w")
+
+    if app_state.get('search_recursive', False):
+        switch.select()
+
+    # Подгоняем перенос строки описаний под фактическую ширину левой колонки
+    desc_labels = (tolerance_desc_frame, recursive_desc_frame)
+
+    def _update_desc_wraplength(event):
+        col0_width = int(event.width * 7 / 12) - 8
+        if col0_width < 50:
+            return
+        for lbl in desc_labels:
+            if abs(lbl.cget("wraplength") - col0_width) > 10:
+                lbl.configure(wraplength=col0_width)
+
+    settings_content.bind("<Configure>", _update_desc_wraplength)
+
     btn_start = ctk.CTkButton(setup_frame, image=icon_search, text="Начать поиск", font=ui_component.FONTS['main'], state="disabled", **ui_component.BUTTON_PRIMARY_DISABLED)
-    btn_start.grid(row=3, column=0, sticky="ew")
+    btn_start.grid(row=4, column=0, sticky="ew")
 
 
     # ================= ЭКРАН 2: ЗАГРУЗКА И СООБЩЕНИЯ =================

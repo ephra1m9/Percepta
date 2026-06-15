@@ -1,9 +1,12 @@
 import os
 import threading
 import shutil
+from multiprocessing import cpu_count
+
 import fitz
 import customtkinter as ctk
 
+import tkinter as tk
 from tkinter import filedialog
 
 import ui.ui_components as ui_component
@@ -15,7 +18,7 @@ def create_originals_view(parent, app_state, show_error_callback):
     view = ctk.CTkFrame(parent, fg_color="#FFFFFF", corner_radius=0)
     
     content = ctk.CTkFrame(view, fg_color="transparent")
-    content.pack(fill="both", expand=True, padx=30, pady=30)
+    content.pack(fill="both", expand=True, padx=30, pady=20)
     
     main_container = ctk.CTkFrame(content, fg_color="transparent")
     main_container.pack(fill="both", expand=True)
@@ -38,7 +41,10 @@ def create_originals_view(parent, app_state, show_error_callback):
     icon_cancel = parent.create_font_icon("\uF622", parent.icon_path, size=15, color=ui_component.COLORS["danger"])
 
     # ================= ЭКРАН 1: НАСТРОЙКИ =================
-    setup_frame = ctk.CTkFrame(main_container, fg_color="transparent")
+    setup_frame = ctk.CTkScrollableFrame(
+        main_container, fg_color="transparent",
+        scrollbar_button_color="#FFFFFF", scrollbar_button_hover_color="#FFFFFF"
+    )
     setup_frame.grid_columnconfigure(0, weight=1)
     
     ui_component.title(setup_frame, "Поиск оригиналов")
@@ -48,22 +54,128 @@ def create_originals_view(parent, app_state, show_error_callback):
         "но в лучшем качестве (больше вес или больше разрешение)."
     )
 
-    frame_low = ctk.CTkFrame(setup_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border'], corner_radius=10)
-    frame_low.grid(row=2, column=0, sticky="ew", pady=(20, 10))
+    frame_low = ctk.CTkFrame(setup_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border_dark'], corner_radius=10)
+    frame_low.grid(row=2, column=0, sticky="ew", pady=(0, 10))
     btn_low = ctk.CTkButton(frame_low, text="Папка с изображениями", image=icon_folder, font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
     btn_low.pack(side="left", padx=10, pady=10)
     lbl_low = ctk.CTkLabel(frame_low, text="Сжатые или битые изображения", text_color=ui_component.COLORS["text_second"], font=ui_component.FONTS['second'], anchor="e")
     lbl_low.pack(side="left", padx=10, pady=10, fill="x", expand=True) 
 
-    frame_server = ctk.CTkFrame(setup_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border'], corner_radius=10)
+    frame_server = ctk.CTkFrame(setup_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border_dark'], corner_radius=10)
     frame_server.grid(row=3, column=0, sticky="ew", pady=(0, 20))
     btn_server = ctk.CTkButton(frame_server, text="Папка с исходниками", image=icon_folder, font=ui_component.FONTS['second_btn'], **ui_component.BUTTON_SECONDARY)
     btn_server.pack(side="left", padx=10, pady=10)
     lbl_server = ctk.CTkLabel(frame_server, text="Изображения в лучшем качестве", text_color=ui_component.COLORS["text_second"], font=ui_component.FONTS['second'], anchor="e")
     lbl_server.pack(side="left", padx=10, pady=10, fill="x", expand=True)
 
+    # ----- Плашка с настройками поиска оригиналов -----
+    settings_frame = ctk.CTkFrame(setup_frame, fg_color="transparent", border_width=1, border_color=ui_component.COLORS['border_dark'], corner_radius=10)
+    settings_frame.grid(row=4, column=0, sticky="ew", pady=(0, 20))
+
+    settings_content = ctk.CTkFrame(settings_frame, fg_color="transparent")
+    settings_content.pack(fill="x", expand=True, padx=15, pady=12)
+    settings_content.grid_columnconfigure(0, weight=7, uniform="settings")
+    settings_content.grid_columnconfigure(1, weight=5, uniform="settings")
+
+    FONT_LABEL = ("Rubik", 16)
+    FONT_DESC = ("Rubik Light", 14)
+
+    # Порог pHash
+    def update_phash_threshold(value):
+        val = int(value)
+        app_state['phash_threshold'] = val
+        lbl_phash.configure(text=f"Порог pHash: {val}")
+
+    phash_info = ctk.CTkFrame(settings_content, fg_color="transparent")
+    phash_info.grid(row=0, column=0, sticky="ew", padx=(0, 8), pady=(0, 10))
+
+    current_phash = app_state.get('phash_threshold', 25)
+    lbl_phash = ctk.CTkLabel(phash_info, text=f"Порог pHash: {current_phash}", font=FONT_LABEL)
+    lbl_phash.pack(anchor="w")
+
+    phash_desc = "Меньше = строже. 10-15 — почти идентичные, 20-25 — баланс, 30-35 — мягкий поиск."
+    phash_desc_frame = ctk.CTkLabel(phash_info, text=phash_desc, font=FONT_DESC, text_color=ui_component.COLORS['text_second'], justify="left", anchor="w", wraplength=380)
+    phash_desc_frame.pack(fill="x", pady=(2, 0))
+
+    phash_slider_frame = ctk.CTkFrame(settings_content, fg_color="transparent")
+    phash_slider_frame.grid(row=0, column=1, sticky="ew", padx=(8, 0), pady=(0, 10))
+
+    phash_slider = ctk.CTkSlider(phash_slider_frame, width=1, from_=5, to=35, number_of_steps=30, command=update_phash_threshold)
+    phash_slider.set(current_phash)
+    phash_slider.pack(fill="x")
+
+    # Минимальное улучшение качества
+    def update_quality_ratio(value):
+        val = float(value)
+        app_state['quality_ratio'] = val
+        lbl_quality.configure(text=f"Улучшение качества: {val:.1f}×")
+
+    hr1 = tk.Frame(settings_content, height=1, bg=ui_component.COLORS["border"], bd=0, highlightthickness=0)
+    hr1.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+
+    quality_info = ctk.CTkFrame(settings_content, fg_color="transparent")
+    quality_info.grid(row=2, column=0, sticky="ew", padx=(0, 8), pady=(0, 10))
+
+    current_quality = app_state.get('quality_ratio', 1.2)
+    lbl_quality = ctk.CTkLabel(quality_info, text=f"Улучшение качества: {current_quality:.1f}×", font=FONT_LABEL)
+    lbl_quality.pack(anchor="w")
+
+    quality_desc = "Во сколько раз оригинал должен быть лучше."
+    quality_desc_frame = ctk.CTkLabel(quality_info, text=quality_desc, font=FONT_DESC, text_color=ui_component.COLORS['text_second'], justify="left", anchor="w", wraplength=380)
+    quality_desc_frame.pack(fill="x", pady=(2, 0))
+
+    quality_slider_frame = ctk.CTkFrame(settings_content, fg_color="transparent")
+    quality_slider_frame.grid(row=2, column=1, sticky="ew", padx=(8, 0), pady=(0, 10))
+
+    quality_slider = ctk.CTkSlider(quality_slider_frame, width=1, from_=1.0, to=2.0, number_of_steps=20, command=update_quality_ratio)
+    quality_slider.set(current_quality)
+    quality_slider.pack(fill="x")
+
+    # Количество процессов для поиска оригиналов
+    total_cores = cpu_count()
+    default_workers = max(1, total_cores - 1)
+
+    def update_max_workers(value):
+        val = int(value)
+        app_state['max_workers'] = val
+        lbl_workers.configure(text=f"Ядра CPU: {val} из {total_cores}")
+
+    hr2 = tk.Frame(settings_content, height=1, bg=ui_component.COLORS["border"], bd=0, highlightthickness=0)
+    hr2.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(0, 10))
+
+    workers_info = ctk.CTkFrame(settings_content, fg_color="transparent")
+    workers_info.grid(row=4, column=0, sticky="ew", padx=(0, 8))
+
+    current_workers = app_state.get('max_workers', default_workers)
+    lbl_workers = ctk.CTkLabel(workers_info, text=f"Ядра CPU: {current_workers} из {total_cores}", font=FONT_LABEL)
+    lbl_workers.pack(anchor="w")
+
+    workers_desc = "Меньше ядер — ниже нагрузка на компьютер, но дольше поиск."
+    workers_desc_frame = ctk.CTkLabel(workers_info, text=workers_desc, font=FONT_DESC, text_color=ui_component.COLORS['text_second'], justify="left", anchor="w", wraplength=380)
+    workers_desc_frame.pack(fill="x", pady=(2, 0))
+
+    workers_slider_frame = ctk.CTkFrame(settings_content, fg_color="transparent")
+    workers_slider_frame.grid(row=4, column=1, sticky="ew", padx=(8, 0))
+
+    workers_slider = ctk.CTkSlider(workers_slider_frame, width=1, from_=1, to=total_cores, number_of_steps=max(1, total_cores - 1), command=update_max_workers)
+    workers_slider.set(current_workers)
+    workers_slider.pack(fill="x")
+
+    # Подгоняем перенос строки описаний под фактическую ширину левой колонки
+    desc_labels = (phash_desc_frame, quality_desc_frame, workers_desc_frame)
+
+    def _update_desc_wraplength(event):
+        col0_width = int(event.width * 7 / 12) - 8
+        if col0_width < 50:
+            return
+        for lbl in desc_labels:
+            if abs(lbl.cget("wraplength") - col0_width) > 10:
+                lbl.configure(wraplength=col0_width)
+
+    settings_content.bind("<Configure>", _update_desc_wraplength)
+
     btn_start = ctk.CTkButton(setup_frame, image=icon_search, text="Найти оригиналы", font=ui_component.FONTS['main'], state="disabled", **ui_component.BUTTON_PRIMARY_DISABLED)
-    btn_start.grid(row=4, column=0, sticky="ew")
+    btn_start.grid(row=5, column=0, sticky="ew")
 
 
     # ================= ЭКРАН 2: ЗАГРУЗКА И СООБЩЕНИЯ =================

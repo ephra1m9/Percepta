@@ -6,13 +6,13 @@ import textwrap
 COLORS = {
     "bg_app": "#F9FAFB",
     "bg_surface": "#FFFFFF",
-    "bg_input": "#EFF3F8",
+    "bg_input": "#F6F7F8",
     
     "info_bg": "#DBEAFE",
     "info_text": "#1E40AF",
 
-    "border": "#E5E7EB",
-    "border_dark": "#D1D5DB",
+    "border": "#E8EAEE",
+    "border_dark": "#E0E0E0",
 
     "text_main": "#111827",
     "text_second": "#4B5563",
@@ -46,33 +46,17 @@ _PANEL_R = 20  # радиус скругления
 
 
 def _draw_gradient(canvas, width, height, panel_mode=None):
-    """Рисует размытый пастельный градиент через PIL.
+    """Рисует сплошной фон через PIL.
     panel_mode='center' — рисует белую скруглённую панель по центру (главный экран).
     panel_mode='page'   — рисует белую скруглённую панель на всю ширину (страницы).
     """
-    from PIL import Image, ImageDraw, ImageFilter, ImageTk
+    from PIL import Image, ImageDraw, ImageTk
 
     if width < 2 or height < 2:
         return
 
     # Базовый фон
-    img = Image.new("RGBA", (width, height), (240, 244, 248, 255))
-
-    blobs = [
-        (-int(width * 0.2), -int(height * 0.2), int(width * 0.6), int(height * 0.8),  (230, 230, 250, 200)),
-        ( int(width * 0.4), -int(height * 0.3), int(width * 1.2), int(height * 0.7),  (255, 240, 245, 200)),
-        ( int(width * 0.1),  int(height * 0.3), int(width * 0.9), int(height * 1.3),  (240, 248, 255, 200)),
-        (-int(width * 0.1),  int(height * 0.5), int(width * 0.5), int(height * 1.2),  (245, 255, 250, 200)),
-    ]
-
-    for x1, y1, x2, y2, color in blobs:
-        layer = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-        ImageDraw.Draw(layer).ellipse([x1, y1, x2, y2], fill=color)
-        img = Image.alpha_composite(img, layer)
-
-    # Размытие
-    blur_r = max(40, int(min(width, height) * 0.12))
-    img = img.filter(ImageFilter.GaussianBlur(radius=blur_r))
+    img = Image.new("RGBA", (width, height), (247, 250, 252, 255))
 
     draw = ImageDraw.Draw(img)
     brd = (229, 231, 235, 255)
@@ -109,7 +93,7 @@ def create_gradient_canvas(parent, panel_mode=None):
     panel_mode='center' — белая скруглённая панель по центру (главный экран).
     panel_mode='page'   — белая скруглённая панель на всю рабочую область (страницы).
     Возвращает canvas — поверх него можно размещать виджеты через place() или grid()."""
-    canvas = tk.Canvas(parent, highlightthickness=0, bd=0, bg="#F0F4F8")
+    canvas = tk.Canvas(parent, highlightthickness=0, bd=0, bg="#F7FAFC")
     canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
 
     def on_resize(event):
@@ -211,7 +195,7 @@ def subtitle(view, text: str):
 
 def description(view, text: str):
     """Описание для функции программы"""
-    desc_frame = ctk.CTkFrame(view, fg_color=COLORS["bg_input"], corner_radius=10)
+    desc_frame = ctk.CTkFrame(view, fg_color=COLORS["bg_input"], corner_radius=10, border_width=1, border_color=COLORS["border"])
     desc_frame.grid(row=1, column=0, pady=(0, 30), sticky="ew")
     
     lbl_desc = CTkAdaptiveLabel(
@@ -354,7 +338,7 @@ def process_screen(parent, title: str, scan_mode: str):
 # Главный экран
 def main_menu_btn(parent, title_text: str, desc_text: str, icon_name, event_handler):
     """"Карточка-кнопка для главного меню"""
-    card = ctk.CTkFrame(parent, fg_color="white", border_width=1, border_color=COLORS["border"], corner_radius=12, cursor="hand2")
+    card = ctk.CTkFrame(parent, fg_color="white", border_width=1, border_color=COLORS["border_dark"], corner_radius=12, cursor="hand2")
     card.pack(fill="x", pady=(0, 15))
 
     card.grid_columnconfigure(1, weight=1)

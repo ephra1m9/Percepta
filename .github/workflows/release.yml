@@ -28,7 +28,7 @@ jobs:
         run: pyinstaller "Find me.spec"
 
       - name: Zip app
-        run: Compress-Archive -Path "dist\Find me" -DestinationPath "Find-me-Windows.zip"
+        run: Compress-Archive -Path "dist\Find me.exe" -DestinationPath "Find-me-Windows.zip"
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v2

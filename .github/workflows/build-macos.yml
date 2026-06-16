@@ -1,0 +1,40 @@
+name: Build macOS App
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-13
+            label: Intel
+          - os: macos-14
+            label: Apple-Silicon
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pillow imagehash pymupdf opencv-python customtkinter pyinstaller
+
+      - name: Build app
+        run: pyinstaller "Find me Mac.spec"
+
+      - name: Zip app bundle
+        run: cd dist && zip -r "../Find-me-macOS-${{ matrix.label }}.zip" "Find me.app"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Find-me-macOS-${{ matrix.label }}
+          path: Find-me-macOS-${{ matrix.label }}.zip
+          retention-days: 30

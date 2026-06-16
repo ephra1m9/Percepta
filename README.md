@@ -181,20 +181,6 @@ pyinstaller "Find me Mac.spec"
 
 This project is licensed under the MIT License — see the LICENSE file for details.
 
-### Contributing
-
-Contributions are welcome! Please submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-### Reporting Issues
-
-Please open an issue on GitHub if you encounter bugs or have feature requests.
-
 ---
 
 <a name="русский"></a>
@@ -362,17 +348,3 @@ pyinstaller "Find me Mac.spec"
 ### Лицензия
 
 Этот проект лицензирован под лицензией MIT — подробности в файле LICENSE.
-
-### Участие в разработке
-
-Мы приветствуем вклад в проект! Пожалуйста, отправляйте Pull Request.
-
-1. Сделайте форк репозитория
-2. Создайте ветку для вашей функции (`git checkout -b feature/AmazingFeature`)
-3. Зафиксируйте изменения (`git commit -m 'Add some AmazingFeature'`)
-4. Отправьте в ветку (`git push origin feature/AmazingFeature`)
-5. Откройте Pull Request
-
-### Сообщение об ошибках
-
-Если вы столкнулись с ошибками или у вас есть запросы на новые функции, откройте issue на GitHub.

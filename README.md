@@ -24,10 +24,9 @@ Percepta ("Find me") is a powerful desktop application for finding duplicate ima
 
 ### Key Features
 
-- **Three Search Modes**:
-  - **Single Folder**: Find duplicates within a single directory
-  - **Reference Search**: Compare images against a reference folder
-  - **Originals Search**: Find original high-resolution images among lower-quality copies
+- **Two Search Modes**:
+  - **Duplicates**: Find identical or visually similar images within a folder
+  - **Originals**: Find original high-resolution images among lower-quality copies
 - **Multi-Stage Hybrid Algorithm**: pHash + aHash + dHash + HSV histograms + SSIM + ORB descriptors (requires ≥ 2 methods to agree, minimising false positives)
 - **Wide Format Support**: JPG, PNG, WebP, BMP, and PDF files (extracts and compares individual pages)
 - **Rotation Detection**: Automatically detects rotated versions of the same image (0°, 90°, 180°, 270°)
@@ -82,8 +81,8 @@ Installed automatically via `requirements.txt`:
 ### Usage
 
 1. **Launch** the application with `python main.py`
-2. **Choose a search mode** from the sidebar:
-   - **Duplicates** — find duplicates within one or more folders
+2. **Choose a search mode** from the main menu:
+   - **Duplicates** — find identical or visually similar images in a folder
    - **Originals** — find high-resolution originals for lower-quality copies
 3. **Configure search parameters**: target folder(s), tolerance level, subdirectory scanning
 4. **Start the scan** and review results
@@ -207,10 +206,9 @@ Percepta («Find me») — настольное приложение для по
 
 ### Ключевые возможности
 
-- **Три режима поиска**:
-  - **Поиск дубликатов**: поиск в одной или нескольких директориях
-  - **Поиск по эталону**: сравнение изображений из нескольких папок с эталонной
-  - **Поиск оригиналов**: нахождение оригиналов высокого разрешения среди копий низкого качества
+- **Два режима поиска**:
+  - **Дубликаты**: поиск идентичных или визуально схожих изображений в папке
+  - **Оригиналы**: нахождение оригиналов высокого разрешения среди копий низкого качества
 - **Многоэтапный гибридный алгоритм**: pHash + aHash + dHash + HSV-гистограммы + SSIM + ORB-дескрипторы (минимум 2 метода из 6 должны подтвердить совпадение)
 - **Широкая поддержка форматов**: JPG, PNG, WebP, BMP и PDF (каждая страница обрабатывается независимо)
 - **Обнаружение поворотов**: автоматически находит повёрнутые версии изображений (0°, 90°, 180°, 270°)
@@ -265,9 +263,9 @@ Percepta («Find me») — настольное приложение для по
 ### Использование
 
 1. **Запустите приложение**, выполнив `python main.py`
-2. **Выберите режим поиска** в боковой панели:
-   - **Поиск дубликатов** — дубликаты в одной или нескольких папках
-   - **Поиск оригиналов** — оригиналы высокого разрешения для копий
+2. **Выберите режим поиска** в главном меню:
+   - **Дубликаты** — поиск идентичных или визуально схожих изображений в папке
+   - **Оригиналы** — оригиналы высокого разрешения для копий
 3. **Настройте параметры**: целевая папка(и), уровень допуска, сканирование поддиректорий
 4. **Запустите сканирование** и просмотрите результаты
 5. **Управляйте дубликатами**: сравнение бок о бок, выбор копий для удаления, перемещение или удаление

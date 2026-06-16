@@ -37,9 +37,6 @@ def clear_image_cache():
 
 
 def _init_worker():
-    # Каждый воркер обрабатывает один файл за раз — отключаем внутреннюю
-    # многопоточность OpenCV, иначе N процессов x M внутренних потоков
-    # перегружают CPU сильнее, чем заданное число воркеров
     cv2.setNumThreads(1)
 
 
@@ -105,10 +102,10 @@ def get_image_data(path):
                 page = doc.load_page(page_num)
                 pix = page.get_pixmap(dpi=72)
                 img_pil = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-                # Реальное разрешение страницы при 300 dpi (для корректного сравнения качества)
                 rect = page.rect
                 native_pixels = int(rect.width * 300 / 72) * int(rect.height * 300 / 72)
-                results.append(process_image_logic(img_pil, path, file_size, page_num + 1, native_pixels))
+                page_text = page.get_text().strip()
+                results.append(process_image_logic(img_pil, path, file_size, page_num + 1, native_pixels, page_text=page_text))
             doc.close()
         else:
             with Image.open(path) as img:
@@ -121,7 +118,17 @@ def get_image_data(path):
     return results
 
 
-def process_image_logic(img_pil, path, file_size, page_num, native_pixels=None):
+def _text_jaccard(t1, t2, min_words=20):
+    """Word-level Jaccard similarity between two texts. Returns None if either is too short."""
+    words1 = set(t1.lower().split())
+    words2 = set(t2.lower().split())
+    if len(words1) < min_words or len(words2) < min_words:
+        return None
+    union = words1 | words2
+    return len(words1 & words2) / len(union)
+
+
+def process_image_logic(img_pil, path, file_size, page_num, native_pixels=None, page_text=None):
     """Ядро анализа изображения.
     native_pixels — реальное разрешение страницы PDF при 300 dpi.
     Для обычных изображений совпадает с pixels.
@@ -177,7 +184,8 @@ def process_image_logic(img_pil, path, file_size, page_num, native_pixels=None):
         # для обычных изображений — совпадает с pixels
         'native_pixels': native_pixels if native_pixels is not None else actual_pixels,
         'size': file_size,
-        'page': page_num
+        'page': page_num,
+        'text': page_text or '',
     }
 
 
@@ -289,6 +297,18 @@ def are_images_matching(des1, des2, min_matches=None, lowe_ratio=0.72, ratio_thr
         return False
 
 
+def _load_for_ssim_cmp(path, page, max_size=512):
+    """Загружает изображение и даунскейлит до max_size для быстрого SSIM-сравнения."""
+    img = load_image_for_ssim(path, page)
+    if img is None:
+        return None
+    h, w = img.shape[:2]
+    if max(h, w) > max_size:
+        scale = max_size / max(h, w)
+        img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+    return img
+
+
 def load_image_for_ssim(path, page):
     """
     Загружает изображение для вычисления SSIM.
@@ -389,13 +409,13 @@ def find_duplicates(image_paths, tolerance=15, progress_callback=None):
     progress_callback(checked, total, found) — вызывается после каждого файла.
     Прогресс: 0.0→1.0 по всем файлам (кэширование + сравнение).
     """
-    phash_tolerance = max(8, tolerance // 2)
+    phash_tolerance = max(4, tolerance // 2)
     # При большом tolerance pHash сам по себе даёт много ложных совпадений —
     # подтверждаем их структурным сравнением ORB (с учётом поворотов).
     # Для сканов документов (преимущественно белый фон) гистограмма почти
     # не отличается, поэтому ORB — основной фильтр; гистограмма используется
     # только как запасной критерий, если на изображениях мало деталей для ORB.
-    orb_min_matches = max(12, tolerance // 2)
+    orb_min_matches = max(15, tolerance // 2)
     histogram_threshold = min(0.9, 0.6 + phash_tolerance * 0.02)
     logger.info(
         f"Поиск дубликатов: {len(image_paths)} файлов, "
@@ -478,6 +498,34 @@ def find_duplicates(image_paths, tolerance=15, progress_callback=None):
                     f"diff={min_hash_diff}"
                 )
                 continue
+
+            # Текстовая проверка для PDF: если обе страницы содержат достаточно текста
+            # и текст существенно различается — это разные документы, не дубликаты.
+            text_sim = _text_jaccard(d1.get('text', ''), d2.get('text', ''))
+            if text_sim is not None and text_sim < 0.6:
+                logger.debug(
+                    f"Текст не совпадает (jaccard={text_sim:.2f}): "
+                    f"{os.path.basename(d1['path'])} стр.{d1['page']} "
+                    f"<-> {os.path.basename(d2['path'])} стр.{d2['page']}"
+                )
+                continue
+
+            # SSIM-проверка: финальный фильтр по пиксельному сходству.
+            # Отсекает разные рукописные страницы одного бланка — их SSIM значительно
+            # ниже, чем у истинных дубликатов (одинаковый скан, разное сжатие/формат).
+            # Порог зависит от tolerance: строже при малых значениях, мягче при больших.
+            ssim_threshold = max(0.60, 0.82 - tolerance * 0.006)
+            img1_np = _load_for_ssim_cmp(d1['path'], d1.get('page'))
+            img2_np = _load_for_ssim_cmp(d2['path'], d2.get('page'))
+            if img1_np is not None and img2_np is not None:
+                ssim_score = compare_ssim(img1_np, img2_np)
+                if ssim_score < ssim_threshold:
+                    logger.debug(
+                        f"SSIM отклонён ({ssim_score:.3f} < {ssim_threshold:.3f}): "
+                        f"{os.path.basename(d1['path'])} стр.{d1['page']} "
+                        f"<-> {os.path.basename(d2['path'])} стр.{d2['page']}"
+                    )
+                    continue
 
             group.append(d2['path'])
             visited.add(item_id2)

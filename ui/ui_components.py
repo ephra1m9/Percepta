@@ -4,7 +4,7 @@ import textwrap
 
 
 COLORS = {
-    "bg_app": "#F9FAFB",
+    "bg_app": "#EDEEF0",
     "bg_surface": "#FFFFFF",
     "bg_input": "#F6F7F8",
     
